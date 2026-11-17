@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Task, UserSettings, Priority, TaskSource, SortOption } from "@/lib/types";
 import { getLocalTasks, saveLocalTasks } from "@/lib/storage/localStore";
+import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
 import { isToday, isTomorrow, isPast, startOfDay } from "date-fns";
 
 export function useTasks(settings: UserSettings) {
@@ -24,11 +25,71 @@ export function useTasks(settings: UserSettings) {
     });
   }, []);
 
-  // Load tasks on mount
+  // Load tasks on mount & listen to Supabase Realtime if configured
   useEffect(() => {
     const loaded = getLocalTasks();
     setTasks(loaded);
     setIsLoaded(true);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = createClient();
+
+        // 1. Fetch remote tasks
+        supabase
+          .from("tasks")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .then(({ data, error }) => {
+            if (!error && data && data.length > 0) {
+              setTasks(data as Task[]);
+              saveLocalTasks(data as Task[]);
+            } else if (!error && data && data.length === 0 && loaded.length > 0) {
+              // Upload initial local tasks to cloud
+              supabase.from("tasks").insert(loaded).then();
+            }
+          });
+
+        // 2. Realtime cross-device sync channel
+        const channel = supabase
+          .channel("realtime:tasks")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "tasks" },
+            (payload) => {
+              if (payload.eventType === "INSERT") {
+                setTasks((prev) => {
+                  if (prev.some((t) => t.id === payload.new.id)) return prev;
+                  const updated = [payload.new as Task, ...prev];
+                  saveLocalTasks(updated);
+                  return updated;
+                });
+              } else if (payload.eventType === "UPDATE") {
+                setTasks((prev) => {
+                  const updated = prev.map((t) =>
+                    t.id === payload.new.id ? (payload.new as Task) : t
+                  );
+                  saveLocalTasks(updated);
+                  return updated;
+                });
+              } else if (payload.eventType === "DELETE") {
+                setTasks((prev) => {
+                  const updated = prev.filter((t) => t.id !== payload.old.id);
+                  saveLocalTasks(updated);
+                  return updated;
+                });
+              }
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      } catch (err) {
+        console.error("Supabase sync initialization error:", err);
+      }
+    }
   }, []);
 
   // Sync to local storage
@@ -117,6 +178,11 @@ export function useTasks(settings: UserSettings) {
       const updatedList = [newTask, ...tasks];
       commitTasks(updatedList);
 
+      // Cloud sync if Supabase configured
+      if (isSupabaseConfigured()) {
+        createClient().from("tasks").insert([newTask]).then();
+      }
+
       // Auto-push to Google if enabled
       if (settings.google_auto_push_enabled && (settings.google_access_token || settings.google_refresh_token)) {
         pushTaskToGCal(newTask, settings).catch((err) =>
@@ -147,6 +213,11 @@ export function useTasks(settings: UserSettings) {
         return next;
       });
 
+      // Cloud sync if Supabase configured
+      if (isSupabaseConfigured()) {
+        createClient().from("tasks").update(updates).eq("id", taskId).then();
+      }
+
       // If task is pushed to Google or auto-push is enabled and date/reminder/title changed, sync to GCal
       if (
         (updatedTask.is_pushed_to_google || settings.google_auto_push_enabled) &&
@@ -163,10 +234,12 @@ export function useTasks(settings: UserSettings) {
   // Toggle complete
   const toggleTaskComplete = useCallback(
     (taskId: string) => {
+      let isCompletedAfterToggle = false;
       setTasks((prev) => {
         const next = prev.map((t) => {
           if (t.id === taskId) {
             const isNowCompleted = !t.is_completed;
+            isCompletedAfterToggle = isNowCompleted;
             return {
               ...t,
               is_completed: isNowCompleted,
@@ -179,6 +252,17 @@ export function useTasks(settings: UserSettings) {
         saveLocalTasks(next);
         return next;
       });
+
+      if (isSupabaseConfigured()) {
+        createClient()
+          .from("tasks")
+          .update({
+            is_completed: isCompletedAfterToggle,
+            completed_at: isCompletedAfterToggle ? new Date().toISOString() : null,
+          })
+          .eq("id", taskId)
+          .then();
+      }
     },
     []
   );
@@ -187,6 +271,11 @@ export function useTasks(settings: UserSettings) {
   const deleteTask = useCallback(
     async (taskId: string) => {
       const taskToDelete = tasks.find((t) => t.id === taskId);
+
+      // Cloud delete
+      if (isSupabaseConfigured()) {
+        createClient().from("tasks").delete().eq("id", taskId).then();
+      }
 
       // Delete from Google Calendar if event exists
       if (

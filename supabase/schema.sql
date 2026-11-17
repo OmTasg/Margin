@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
 
 -- 3. Create Tasks Table
 CREATE TABLE IF NOT EXISTS public.tasks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     notes TEXT,
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
     completed_at TIMESTAMPTZ,
     reminder_lead_time_minutes INTEGER NOT NULL DEFAULT 15,
+    estimated_duration_minutes INTEGER,
     source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'canvas')),
     external_url TEXT,
     course_name TEXT,
