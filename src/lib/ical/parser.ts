@@ -1,4 +1,21 @@
 import ical from "node-ical";
+import {
+  parseCanvasSummary,
+  cleanDescription,
+  extractCanvasUrl,
+  resolveDirectCanvasUrl,
+  calculateCanvasPriority,
+  isMoreThanTwoDaysOverdue,
+} from "../canvasUtils";
+
+export {
+  parseCanvasSummary,
+  cleanDescription,
+  extractCanvasUrl,
+  resolveDirectCanvasUrl,
+  calculateCanvasPriority,
+  isMoreThanTwoDaysOverdue,
+};
 
 export interface ParsedCanvasEvent {
   canvas_uid: string;
@@ -9,59 +26,8 @@ export interface ParsedCanvasEvent {
   external_url?: string | null;
 }
 
-export function parseCanvasSummary(summary: string): { title: string; courseName: string | null } {
-  let title = (summary || "").trim();
-  let courseName: string | null = null;
-
-  // Canvas usually formats assignment summaries as "Assignment Title [Course Name]"
-  const bracketMatch = title.match(/^(.*?)\s*\[(.*?)\]$/);
-  if (bracketMatch) {
-    title = bracketMatch[1].trim();
-    courseName = bracketMatch[2].trim();
-  } else {
-    // Check if course name is at the beginning, e.g. "[CS101] Homework 1"
-    const prefixMatch = title.match(/^\[(.*?)\]\s*(.*)$/);
-    if (prefixMatch) {
-      courseName = prefixMatch[1].trim();
-      title = prefixMatch[2].trim();
-    }
-  }
-
-  return { title, courseName };
-}
-
-export function extractCanvasUrl(description: string, eventUrl?: string): string | null {
-  if (eventUrl && eventUrl.startsWith("http")) {
-    return eventUrl.trim();
-  }
-
-  if (!description) return null;
-
-  // Look for Canvas assignment link pattern: /courses/:id/assignments/:id
-  const canvasAssignmentRegex = /(https?:\/\/[^\s<>"]+\/courses\/\d+\/assignments\/\d+[^\s<>"]*)/i;
-  const match = description.match(canvasAssignmentRegex);
-  if (match) {
-    return match[1];
-  }
-
-  // Fallback to any URL in description
-  const generalUrlRegex = /(https?:\/\/[^\s<>"]+)/i;
-  const generalMatch = description.match(generalUrlRegex);
-  return generalMatch ? generalMatch[1] : null;
-}
-
-export function cleanDescription(rawDesc: string): string {
-  if (!rawDesc) return "";
-  // Strip HTML tags if present
-  let text = rawDesc.replace(/<[^>]*>/g, " ");
-  // Unescape common ical sequences
-  text = text.replace(/\\n/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
-  // Remove excessive whitespace
-  return text.trim();
-}
-
 /**
- * Parses raw iCal ICS string into normalized Canvas events
+ * Parses raw iCal ICS string into normalized Canvas events using node-ical
  */
 export async function parseIcsContent(icsData: string): Promise<ParsedCanvasEvent[]> {
   try {
@@ -80,7 +46,7 @@ export async function parseIcsContent(icsData: string): Promise<ParsedCanvasEven
       const cleanedNotes = cleanDescription(rawDescription);
 
       const eventUrl = typeof item.url === "object" && item.url ? (item.url as any).val : item.url;
-      const externalUrl = extractCanvasUrl(rawDescription, eventUrl);
+      const externalUrl = extractCanvasUrl(rawDescription, eventUrl, uid);
 
       // Determine due date: Canvas assignments use DTEND or DTSTART
       let dueDate: Date | null = null;
@@ -139,10 +105,10 @@ export function fallbackIcsParser(icsData: string): ParsedCanvasEvent[] {
     const rawDesc = descMatch ? descMatch[1].trim() : "";
     const cleanedNotes = cleanDescription(rawDesc);
     const eventUrl = urlMatch ? urlMatch[1].trim() : undefined;
-    const externalUrl = extractCanvasUrl(rawDesc, eventUrl);
+    const externalUrl = extractCanvasUrl(rawDesc, eventUrl, uid);
 
     let dueDateStr: string | null = null;
-    const dateStr = (dtendMatch ? dtendMatch[1] : dtstartMatch ? dtstartMatch[1] : null);
+    const dateStr = dtendMatch ? dtendMatch[1] : dtstartMatch ? dtstartMatch[1] : null;
     if (dateStr) {
       dueDateStr = parseIcsDateString(dateStr);
     }
@@ -161,7 +127,6 @@ export function fallbackIcsParser(icsData: string): ParsedCanvasEvent[] {
 }
 
 function parseIcsDateString(str: string): string | null {
-  // Format: 20261118T180000Z or 20261118
   try {
     const clean = str.trim();
     if (clean.length === 8) {

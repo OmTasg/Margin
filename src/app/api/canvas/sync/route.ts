@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseIcsContent, fallbackIcsParser } from "@/lib/ical/parser";
+import {
+  calculateCanvasPriority,
+  isMoreThanTwoDaysOverdue,
+  resolveDirectCanvasUrl,
+} from "@/lib/canvasUtils";
 import { Task, UserSettings } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -74,46 +79,79 @@ export async function POST(req: NextRequest) {
 
     let importedCount = 0;
     let updatedCount = 0;
+    let prunedCount = 0;
     const nowIso = new Date().toISOString();
-    const resultTasks: Task[] = [...existingTasks];
+    let resultTasks: Task[] = [...existingTasks];
 
     for (const event of parsedEvents) {
+      // Auto-skip events that are already more than 2 days overdue
+      if (isMoreThanTwoDaysOverdue(event.due_date)) {
+        continue;
+      }
+
+      // Ensure direct URL
+      const directUrl = resolveDirectCanvasUrl(
+        event.external_url,
+        event.notes,
+        event.canvas_uid
+      );
+
+      // Auto-prioritize based on due date
+      const autoPriority = calculateCanvasPriority(event.due_date);
+
       const existing = existingMap.get(event.canvas_uid);
 
       if (existing) {
+        // Upgrade existing external_url to direct assignment link if available
+        const currentDirectUrl = resolveDirectCanvasUrl(
+          existing.external_url,
+          existing.notes,
+          existing.canvas_uid
+        );
+        const bestUrl = directUrl || currentDirectUrl || existing.external_url;
+
         // Check if anything changed
         const dateChanged = existing.due_date !== event.due_date;
         const titleChanged = existing.title !== event.title;
         const notesChanged = existing.notes !== event.notes;
-        const urlChanged = existing.external_url !== event.external_url;
+        const urlChanged = existing.external_url !== bestUrl;
+        const priorityNeedsUpdate =
+          !existing.is_completed && existing.priority !== autoPriority;
 
-        if (dateChanged || titleChanged || notesChanged || urlChanged) {
+        if (
+          dateChanged ||
+          titleChanged ||
+          notesChanged ||
+          urlChanged ||
+          priorityNeedsUpdate
+        ) {
           const index = resultTasks.findIndex((t) => t.id === existing.id);
           if (index !== -1) {
             resultTasks[index] = {
               ...resultTasks[index],
               title: event.title,
               due_date: event.due_date,
+              priority: autoPriority,
               notes: event.notes || resultTasks[index].notes,
               course_name: event.course_name || resultTasks[index].course_name,
-              external_url: event.external_url || resultTasks[index].external_url,
+              external_url: bestUrl,
               updated_at: nowIso,
             };
             updatedCount++;
           }
         }
       } else {
-        // New assignment from Canvas
+        // New assignment from Canvas: auto-prioritize based on due date
         const newTask: Task = {
           id: `canvas-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           title: event.title,
           notes: event.notes,
-          priority: "P2", // Default to Medium priority per requirement
+          priority: autoPriority,
           due_date: event.due_date,
           is_completed: false,
           reminder_lead_time_minutes: defaultReminderMinutes,
           source: "canvas",
-          external_url: event.external_url,
+          external_url: directUrl,
           course_name: event.course_name,
           canvas_uid: event.canvas_uid,
           is_pushed_to_google: false,
@@ -126,10 +164,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Auto-delete any overdue tasks that are more than 2 days overdue
+    const initialLength = resultTasks.length;
+    resultTasks = resultTasks.filter((t) => {
+      // Keep tasks without due date or not > 2 days overdue
+      return !isMoreThanTwoDaysOverdue(t.due_date);
+    });
+    prunedCount = initialLength - resultTasks.length;
+
     return NextResponse.json({
       success: true,
       importedCount,
       updatedCount,
+      prunedOverdueCount: prunedCount,
       totalFound: parsedEvents.length,
       syncedAt: nowIso,
       tasks: resultTasks,

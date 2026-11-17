@@ -12,6 +12,7 @@ import {
 import { Task, UserSettings } from "@/lib/types";
 import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { generateGoogleCalendarUrl } from "@/lib/google/calendarUrl";
+import { resolveDirectCanvasUrl } from "@/lib/canvasUtils";
 
 interface Props {
   task: Task;
@@ -51,6 +52,7 @@ export function TaskCard({
   };
 
   const dueInfo = formatDueDisplay(task.due_date);
+  const directCanvasUrl = resolveDirectCanvasUrl(task.external_url, task.notes, task.canvas_uid) || task.external_url;
 
   // Priority indicator: colored checkbox border (Things 3 style)
   const priorityCheckboxBorder = {
@@ -156,9 +158,9 @@ export function TaskCard({
       <div className="flex-1 min-w-0 pt-0.5 cursor-pointer" onClick={() => onEdit(task)}>
         {/* Title: Direct link to Canvas if available, with subtle arrow */}
         <div className="flex items-center gap-1.5 leading-snug">
-          {task.external_url ? (
+          {directCanvasUrl ? (
             <a
-              href={task.external_url}
+              href={directCanvasUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}

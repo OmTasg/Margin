@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Task, UserSettings, Priority, TaskSource, SortOption } from "@/lib/types";
 import { getLocalTasks, saveLocalTasks } from "@/lib/storage/localStore";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
+import {
+  resolveDirectCanvasUrl,
+  calculateCanvasPriority,
+  isMoreThanTwoDaysOverdue,
+} from "@/lib/canvasUtils";
 import { isToday, isTomorrow, isPast, startOfDay } from "date-fns";
 
 export function useTasks(settings: UserSettings) {
@@ -25,15 +30,59 @@ export function useTasks(settings: UserSettings) {
     });
   }, []);
 
+  // Helper to sanitize Canvas URLs, auto-prioritize, and auto-delete >2 days overdue tasks
+  const sanitizeAndPruneTasks = useCallback((taskList: Task[]): { cleaned: Task[]; prunedIds: string[] } => {
+    const prunedIds: string[] = [];
+    const cleaned: Task[] = [];
+
+    for (const t of taskList) {
+      // 1. Prune legacy placeholder/sample tasks
+      if (t.id?.startsWith("sample-") || t.canvas_uid?.startsWith("canvas-sample-")) {
+        prunedIds.push(t.id);
+        continue;
+      }
+
+      // 2. Auto-delete overdue tasks > 2 days overdue (48 hours)
+      if (isMoreThanTwoDaysOverdue(t.due_date)) {
+        prunedIds.push(t.id);
+        continue;
+      }
+
+      // 3. Ensure direct Canvas assignment URL
+      const directUrl = resolveDirectCanvasUrl(t.external_url, t.notes, t.canvas_uid);
+
+      // 4. Dynamic auto-prioritization for active Canvas tasks
+      let priority = t.priority;
+      if (t.source === "canvas" && !t.is_completed && t.due_date) {
+        priority = calculateCanvasPriority(t.due_date);
+      }
+
+      cleaned.push({
+        ...t,
+        priority,
+        external_url: directUrl || t.external_url,
+      });
+    }
+
+    return { cleaned, prunedIds };
+  }, []);
+
   // Load tasks on mount & listen to Supabase Realtime if configured
   useEffect(() => {
-    const loaded = getLocalTasks();
+    const rawLocal = getLocalTasks();
+    const { cleaned: loaded, prunedIds: localPruned } = sanitizeAndPruneTasks(rawLocal);
     setTasks(loaded);
+    saveLocalTasks(loaded);
     setIsLoaded(true);
 
     if (isSupabaseConfigured()) {
       try {
         const supabase = createClient();
+
+        // Remove any legacy sample tasks or overdue tasks from Supabase
+        if (localPruned.length > 0) {
+          supabase.from("tasks").delete().in("id", localPruned).then();
+        }
 
         // 1. Fetch remote tasks
         supabase
@@ -41,12 +90,20 @@ export function useTasks(settings: UserSettings) {
           .select("*")
           .order("created_at", { ascending: false })
           .then(({ data, error }) => {
-            if (!error && data && data.length > 0) {
-              setTasks(data as Task[]);
-              saveLocalTasks(data as Task[]);
-            } else if (!error && data && data.length === 0 && loaded.length > 0) {
-              // Upload initial local tasks to cloud
-              supabase.from("tasks").insert(loaded).then();
+            if (!error && data) {
+              const { cleaned: remoteCleaned, prunedIds: remotePruned } = sanitizeAndPruneTasks(data as Task[]);
+              
+              if (remotePruned.length > 0) {
+                supabase.from("tasks").delete().in("id", remotePruned).then();
+              }
+
+              if (remoteCleaned.length > 0) {
+                setTasks(remoteCleaned);
+                saveLocalTasks(remoteCleaned);
+              } else if (loaded.length > 0) {
+                // Upload local tasks to cloud
+                supabase.from("tasks").insert(loaded).then();
+              }
             }
           });
 
@@ -58,16 +115,43 @@ export function useTasks(settings: UserSettings) {
             { event: "*", schema: "public", table: "tasks" },
             (payload) => {
               if (payload.eventType === "INSERT") {
+                const newTask = payload.new as Task;
+                if (isMoreThanTwoDaysOverdue(newTask.due_date)) return;
+                const directUrl = resolveDirectCanvasUrl(newTask.external_url, newTask.notes, newTask.canvas_uid);
+                const sanitizedTask: Task = {
+                  ...newTask,
+                  external_url: directUrl || newTask.external_url,
+                  priority:
+                    newTask.source === "canvas" && !newTask.is_completed && newTask.due_date
+                      ? calculateCanvasPriority(newTask.due_date)
+                      : newTask.priority,
+                };
+
                 setTasks((prev) => {
-                  if (prev.some((t) => t.id === payload.new.id)) return prev;
-                  const updated = [payload.new as Task, ...prev];
+                  if (prev.some((t) => t.id === sanitizedTask.id)) return prev;
+                  const updated = [sanitizedTask, ...prev];
                   saveLocalTasks(updated);
                   return updated;
                 });
               } else if (payload.eventType === "UPDATE") {
+                const updatedItem = payload.new as Task;
+                if (isMoreThanTwoDaysOverdue(updatedItem.due_date)) {
+                  setTasks((prev) => {
+                    const filtered = prev.filter((t) => t.id !== updatedItem.id);
+                    saveLocalTasks(filtered);
+                    return filtered;
+                  });
+                  return;
+                }
+                const directUrl = resolveDirectCanvasUrl(updatedItem.external_url, updatedItem.notes, updatedItem.canvas_uid);
+                const sanitizedItem: Task = {
+                  ...updatedItem,
+                  external_url: directUrl || updatedItem.external_url,
+                };
+
                 setTasks((prev) => {
                   const updated = prev.map((t) =>
-                    t.id === payload.new.id ? (payload.new as Task) : t
+                    t.id === sanitizedItem.id ? sanitizedItem : t
                   );
                   saveLocalTasks(updated);
                   return updated;
@@ -90,7 +174,7 @@ export function useTasks(settings: UserSettings) {
         console.error("Supabase sync initialization error:", err);
       }
     }
-  }, []);
+  }, [sanitizeAndPruneTasks]);
 
   // Sync to local storage
   const commitTasks = useCallback((newTasks: Task[]) => {
@@ -321,16 +405,25 @@ export function useTasks(settings: UserSettings) {
   // Set tasks after Canvas Sync
   const setTasksFromCanvasSync = useCallback(
     (newTasks: Task[]) => {
-      commitTasks(newTasks);
+      const { cleaned, prunedIds } = sanitizeAndPruneTasks(newTasks);
+      commitTasks(cleaned);
+
+      if (isSupabaseConfigured()) {
+        const supabase = createClient();
+        if (prunedIds.length > 0) {
+          supabase.from("tasks").delete().in("id", prunedIds).then();
+        }
+        supabase.from("tasks").upsert(cleaned).then();
+      }
 
       // If auto-push is enabled, push newly imported unpushed tasks
       if (settings.google_auto_push_enabled && (settings.google_access_token || settings.google_refresh_token)) {
-        newTasks
+        cleaned
           .filter((t) => t.source === "canvas" && !t.is_pushed_to_google && !t.is_completed)
           .forEach((t) => pushTaskToGCal(t, settings).catch(() => {}));
       }
     },
-    [commitTasks, settings, pushTaskToGCal]
+    [commitTasks, sanitizeAndPruneTasks, settings, pushTaskToGCal]
   );
 
   // Distinct courses for filter dropdown

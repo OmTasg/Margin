@@ -5,10 +5,11 @@ import { useSettings } from "@/hooks/useSettings";
 import { useTasks } from "@/hooks/useTasks";
 import { useTheme } from "@/hooks/useTheme";
 import { Header } from "@/components/Header";
-import { QuickAddBar } from "@/components/QuickAddBar";
+import { ViewTabBar } from "@/components/ViewTabBar";
 import { FilterBar } from "@/components/FilterBar";
-import { TaskList } from "@/components/TaskList";
+import { TaskList, ViewTab } from "@/components/TaskList";
 import { CalendarView } from "@/components/CalendarView";
+import { NewTaskModal } from "@/components/NewTaskModal";
 import { TaskEditModal } from "@/components/TaskEditModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
@@ -51,13 +52,14 @@ export default function Home() {
     setTasksFromCanvasSync,
   } = useTasks(settings);
 
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  // View Navigation: "today" | "upcoming" | "calendar" | "all" | "completed"
+  const [currentView, setCurrentView] = useState<ViewTab>("today");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [newTaskInitialDate, setNewTaskInitialDate] = useState<Date | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  const quickAddInputRef = useRef<HTMLInputElement>(null);
 
   const addToast = (type: "success" | "error" | "info", message: string) => {
     const id = `${Date.now()}-${Math.random()}`;
@@ -103,6 +105,7 @@ export default function Home() {
 
       if (e.key === "Escape") {
         if (isShortcutsOpen) setIsShortcutsOpen(false);
+        else if (isNewTaskOpen) setIsNewTaskOpen(false);
         else if (editingTask) setEditingTask(null);
         else if (isSettingsOpen) setIsSettingsOpen(false);
         else if (isInput) (activeEl as HTMLElement).blur();
@@ -113,7 +116,23 @@ export default function Home() {
 
       if (e.key === "n" || e.key === "N" || e.key === "c" || e.key === "C") {
         e.preventDefault();
-        quickAddInputRef.current?.focus();
+        setNewTaskInitialDate(null);
+        setIsNewTaskOpen(true);
+      } else if (e.key === "1") {
+        e.preventDefault();
+        setCurrentView("today");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setCurrentView("upcoming");
+      } else if (e.key === "3") {
+        e.preventDefault();
+        setCurrentView("calendar");
+      } else if (e.key === "4") {
+        e.preventDefault();
+        setCurrentView("all");
+      } else if (e.key === "5") {
+        e.preventDefault();
+        setCurrentView("completed");
       } else if (e.key === "/") {
         e.preventDefault();
         const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
@@ -126,7 +145,7 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isShortcutsOpen, editingTask, isSettingsOpen]);
+  }, [isShortcutsOpen, isNewTaskOpen, editingTask, isSettingsOpen]);
 
   // Sync Canvas handler with toasts
   const handleSyncCanvas = async (urlOverride?: string) => {
@@ -167,7 +186,7 @@ export default function Home() {
   // Add Task handler with toast
   const handleAddTaskWithToast = async (taskData: Partial<Task>) => {
     const t = await addTask(taskData);
-    addToast("success", `Added "${t.title}"`);
+    addToast("success", `Created "${t.title}"`);
     return t;
   };
 
@@ -194,33 +213,55 @@ export default function Home() {
       <main className="flex-1 w-full max-w-5xl lg:max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 safe-bottom">
         {/* Elevated Surface Card Container with strong contrast separation from background */}
         <div className="bg-white dark:bg-[#14151c] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl shadow-sm p-4 sm:p-7 transition-colors">
-          {/* Quick Add Sticky Input Bar */}
-          <QuickAddBar
-            settings={settings}
-            onAddTask={handleAddTaskWithToast}
-            inputRef={quickAddInputRef}
+          {/* Prominent View Navigation Tab Bar with counts & + New Task button */}
+          <ViewTabBar
+            currentView={currentView}
+            onViewChange={setCurrentView}
+            counts={{
+              today: groupedTasks.today.length + groupedTasks.overdue.length,
+              upcoming: groupedTasks.tomorrow.length + groupedTasks.later.length,
+              all: groupedTasks.totalActiveCount,
+              completed: groupedTasks.completed.length,
+            }}
+            onOpenNewTask={() => {
+              setNewTaskInitialDate(null);
+              setIsNewTaskOpen(true);
+            }}
           />
 
-          {/* Filter, Multi-Select Priorities, and View Mode Switcher */}
-          <FilterBar
-            selectedPriorities={selectedPriorities}
-            onTogglePriority={togglePriorityFilter}
-            onClearPriorities={() => setSelectedPriorities([])}
-            sourceFilter={sourceFilter}
-            onSourceChange={setSourceFilter}
-            courseFilter={courseFilter}
-            onCourseChange={setCourseFilter}
-            availableCourses={availableCourses}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
+          {/* Filter Bar (Multi-Select Priorities, Course, Source, Sort) - hidden in Calendar View for clean layout */}
+          {currentView !== "calendar" && (
+            <FilterBar
+              selectedPriorities={selectedPriorities}
+              onTogglePriority={togglePriorityFilter}
+              onClearPriorities={() => setSelectedPriorities([])}
+              sourceFilter={sourceFilter}
+              onSourceChange={setSourceFilter}
+              courseFilter={courseFilter}
+              onCourseChange={setCourseFilter}
+              availableCourses={availableCourses}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              showSort={currentView !== "completed"}
+            />
+          )}
 
-          {/* Dynamic View: List View or Calendar View */}
-          {viewMode === "list" ? (
+          {/* Dynamic Content: Calendar View vs Tabbed Task List */}
+          {currentView === "calendar" ? (
+            <CalendarView
+              tasks={tasks}
+              settings={settings}
+              onToggleComplete={(id) => toggleTaskComplete(id)}
+              onEditTask={(task) => setEditingTask(task)}
+              onAddTaskOnDate={(date) => {
+                setNewTaskInitialDate(date);
+                setIsNewTaskOpen(true);
+              }}
+            />
+          ) : (
             <TaskList
               groupedTasks={groupedTasks}
+              currentView={currentView}
               settings={settings}
               onToggleComplete={(id) => {
                 toggleTaskComplete(id);
@@ -231,20 +272,24 @@ export default function Home() {
                 addToast("info", "Task deleted");
               }}
               onPushToGCal={handlePushToGCalWithToast}
-            />
-          ) : (
-            <CalendarView
-              tasks={tasks}
-              settings={settings}
-              onToggleComplete={(id) => toggleTaskComplete(id)}
-              onEditTask={(task) => setEditingTask(task)}
-              onAddTaskOnDate={(date) => {
-                quickAddInputRef.current?.focus();
+              onOpenNewTask={() => {
+                setNewTaskInitialDate(null);
+                setIsNewTaskOpen(true);
               }}
             />
           )}
         </div>
       </main>
+
+      {/* Dedicated Clean New Task Modal */}
+      <NewTaskModal
+        isOpen={isNewTaskOpen}
+        onClose={() => setIsNewTaskOpen(false)}
+        onAddTask={handleAddTaskWithToast}
+        settings={settings}
+        availableCourses={availableCourses}
+        initialDate={newTaskInitialDate}
+      />
 
       {/* Edit Task Modal */}
       <TaskEditModal

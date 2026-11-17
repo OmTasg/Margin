@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <rect width="180" height="180" rx="40" fill="#090a0f"/>
+  <rect x="2" y="2" width="176" height="176" rx="38" stroke="#262738" stroke-width="4"/>
+  <!-- Margin line accent -->
+  <rect x="32" y="38" width="12" height="104" rx="6" fill="#3b82f6"/>
+  <!-- Modern M lettermark -->
+  <path d="M64 140V50L96 96L128 50V140" stroke="#f8fafc" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

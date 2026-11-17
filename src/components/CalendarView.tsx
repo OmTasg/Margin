@@ -8,6 +8,9 @@ import {
   Plus,
   Check,
   Calendar as CalendarIcon,
+  ArrowUpRight,
+  Clock,
+  BookOpen,
 } from "lucide-react";
 import {
   format,
@@ -21,7 +24,9 @@ import {
   isSameDay,
   addDays,
   isToday,
+  isPast,
 } from "date-fns";
+import { resolveDirectCanvasUrl } from "@/lib/canvasUtils";
 
 interface Props {
   tasks: Task[];
@@ -222,71 +227,145 @@ export function CalendarView({
 
       {/* Selected Day Agenda Drawer / Card */}
       {selectedDay && (
-        <div className="mt-4 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-[#181922] space-y-2.5">
-          <div className="flex items-center justify-between">
+        <div className="mt-4 p-4 sm:p-5 rounded-2xl border border-zinc-200/90 dark:border-zinc-800/90 bg-zinc-50/70 dark:bg-[#181922] space-y-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
             <div className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-blue-500" />
-              <h3 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                Tasks for {format(selectedDay, "EEEE, MMMM d, yyyy")}
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
+                {format(selectedDay, "EEEE, MMMM d, yyyy")}
               </h3>
+              {isToday(selectedDay) && (
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                  Today
+                </span>
+              )}
             </div>
 
             <button
               onClick={() => onAddTaskOnDate(selectedDay)}
-              className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              className="px-3 py-1 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 flex items-center gap-1.5 transition shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add task for this day</span>
+              <span>Add task on {format(selectedDay, "MMM d")}</span>
             </button>
           </div>
 
           {selectedDayTasks.length === 0 ? (
-            <p className="text-xs text-zinc-400 italic py-2">
-              No tasks due on this date.
-            </p>
+            <div className="py-6 text-center text-zinc-400 dark:text-zinc-500">
+              <p className="text-xs italic">No tasks or assignments scheduled for this day.</p>
+              <button
+                onClick={() => onAddTaskOnDate(selectedDay)}
+                className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                + Create a task for {format(selectedDay, "MMMM d")}
+              </button>
+            </div>
           ) : (
-            <div className="space-y-1.5 pt-1 divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
-              {selectedDayTasks.map((task) => (
-                <div
-                  key={task.id}
-                  onClick={() => onEditTask(task)}
-                  className="flex items-center justify-between gap-3 pt-2 pb-1 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/40 px-2 rounded-lg cursor-pointer transition"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleComplete(task.id);
-                      }}
-                      className="w-4 h-4 rounded-full border border-zinc-300 dark:border-zinc-600 flex items-center justify-center shrink-0"
-                    >
-                      {task.is_completed && <Check className="w-2.5 h-2.5" />}
-                    </button>
-                    <span
-                      className={`text-xs truncate ${
-                        task.is_completed
-                          ? "line-through text-zinc-400"
-                          : "text-zinc-900 dark:text-zinc-100 font-medium"
-                      }`}
-                    >
-                      {task.course_name ? `[${task.course_name}] ` : ""}
-                      {task.title}
-                    </span>
-                  </div>
+            <div className="space-y-2 pt-1">
+              {selectedDayTasks.map((task) => {
+                const directUrl =
+                  resolveDirectCanvasUrl(task.external_url, task.notes, task.canvas_uid) ||
+                  task.external_url;
 
-                  <div className="flex items-center gap-2 text-[11px] text-zinc-400 shrink-0">
-                    {task.due_date && (
-                      <span>{format(new Date(task.due_date), "h:mm a")}</span>
-                    )}
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${getPriorityDot(
-                        task.priority
-                      )}`}
-                    />
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => onEditTask(task)}
+                    className="p-3 bg-white dark:bg-zinc-900/80 rounded-xl border border-zinc-200/70 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition cursor-pointer flex flex-wrap items-center justify-between gap-3 group"
+                  >
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      {/* Checkbox */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleComplete(task.id);
+                        }}
+                        className={`w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+                          task.is_completed
+                            ? "bg-zinc-700 border-zinc-700 dark:bg-zinc-400 dark:border-zinc-400 text-white dark:text-zinc-900"
+                            : task.priority === "P1"
+                            ? "border-rose-500"
+                            : task.priority === "P2"
+                            ? "border-amber-500"
+                            : "border-zinc-400"
+                        }`}
+                      >
+                        {task.is_completed && <Check className="w-3 h-3 stroke-[3]" />}
+                      </button>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-sm font-medium ${
+                              task.is_completed
+                                ? "line-through text-zinc-400"
+                                : "text-zinc-900 dark:text-zinc-100"
+                            }`}
+                          >
+                            {task.title}
+                          </span>
+
+                          {/* Direct Canvas Link */}
+                          {directUrl && (
+                            <a
+                              href={directUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+                            >
+                              <span>Open in Canvas</span>
+                              <ArrowUpRight className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+
+                        {task.notes && (
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-1">
+                            {task.notes}
+                          </p>
+                        )}
+
+                        {/* Metadata row */}
+                        <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-zinc-400">
+                          {task.course_name && (
+                            <span className="font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                              {task.course_name}
+                            </span>
+                          )}
+
+                          {task.due_date && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 opacity-60" />
+                              {format(new Date(task.due_date), "h:mm a")}
+                            </span>
+                          )}
+
+                          {task.estimated_duration_minutes && (
+                            <span>~{task.estimated_duration_minutes}m</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Priority pill */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          task.priority === "P1"
+                            ? "bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900"
+                            : task.priority === "P2"
+                            ? "bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                        }`}
+                      >
+                        {task.priority}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

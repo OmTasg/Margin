@@ -12,13 +12,13 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   const shortcuts = [
-    { key: "N", desc: "Focus quick-add bar for a new task" },
-    { key: "/", desc: "Search and filter tasks" },
-    { key: "1", desc: "Set priority to High (P1) when adding" },
-    { key: "2", desc: "Set priority to Medium (P2) when adding" },
-    { key: "3", desc: "Set priority to Low (P3) when adding" },
-    { key: "T", desc: "Set due date to Today" },
-    { key: "M", desc: "Set due date to Tomorrow" },
+    { key: "N", desc: "Create a new task (opens New Task dialog)" },
+    { key: "1", desc: "Switch to Today view" },
+    { key: "2", desc: "Switch to Upcoming view" },
+    { key: "3", desc: "Switch to Calendar view" },
+    { key: "4", desc: "Switch to All Tasks view" },
+    { key: "5", desc: "Switch to Completed view" },
+    { key: "/", desc: "Search tasks" },
     { key: "?", desc: "Toggle keyboard shortcuts help" },
     { key: "Esc", desc: "Close modals or blur inputs" },
   ];

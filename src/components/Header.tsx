@@ -41,15 +41,25 @@ export function Header({
   return (
     <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 safe-top transition-colors">
       <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-3">
-        {/* Brand: Margin (Things 3 / Bear typographic aesthetic) */}
+        {/* Brand: Margin (Refined geometric identity) */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-zinc-900 dark:bg-zinc-100"></span>
-            <h1 className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 leading-none">
-              Margin
-            </h1>
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center shadow-sm shrink-0">
+              <svg className="w-3.5 h-3.5" viewBox="0 0 32 32" fill="none">
+                <rect x="5.5" y="7" width="2.5" height="18" rx="1.25" fill="#3b82f6"/>
+                <path d="M12 24V8L17.5 16L23 8V24" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" className="text-white dark:text-zinc-900"/>
+              </svg>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <h1 className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 leading-none">
+                Margin
+              </h1>
+              <span className="text-[10px] font-medium tracking-wide text-zinc-400 dark:text-zinc-500 uppercase hidden xs:inline">
+                Student
+              </span>
+            </div>
             {activeCount > 0 && (
-              <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500 pl-0.5">
+              <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
                 {activeCount}
               </span>
             )}

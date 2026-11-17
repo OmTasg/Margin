@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Priority, TaskSource, SortOption } from "@/lib/types";
-import { ArrowUpDown, List, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 
 interface Props {
   selectedPriorities: Priority[];
@@ -15,8 +15,7 @@ interface Props {
   availableCourses: string[];
   sortBy: SortOption;
   onSortChange: (sort: SortOption) => void;
-  viewMode: "list" | "calendar";
-  onViewModeChange: (mode: "list" | "calendar") => void;
+  showSort?: boolean;
 }
 
 export function FilterBar({
@@ -30,45 +29,14 @@ export function FilterBar({
   availableCourses,
   sortBy,
   onSortChange,
-  viewMode,
-  onViewModeChange,
+  showSort = true,
 }: Props) {
   const isAllPrioritiesSelected = selectedPriorities.length === 0;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2.5 mb-5 pb-3 border-b border-zinc-200/60 dark:border-zinc-800/60 text-xs">
-      {/* Left: View Mode Toggle & Filters */}
+    <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4 pb-2 text-xs">
+      {/* Left: Filters */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-        {/* View Switcher: List vs Calendar */}
-        <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-lg border border-zinc-200/60 dark:border-zinc-700/60 shrink-0">
-          <button
-            type="button"
-            onClick={() => onViewModeChange("list")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition ${
-              viewMode === "list"
-                ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>List</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange("calendar")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition ${
-              viewMode === "calendar"
-                ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
-            }`}
-          >
-            <CalendarIcon className="w-3.5 h-3.5" />
-            <span>Calendar</span>
-          </button>
-        </div>
-
-        <span className="text-zinc-300 dark:text-zinc-700">|</span>
-
         {/* Multi-Select Priority Filter */}
         <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/80 p-0.5 rounded-lg border border-zinc-200/60 dark:border-zinc-700/60 shrink-0">
           <button
@@ -168,8 +136,8 @@ export function FilterBar({
         )}
       </div>
 
-      {/* Right: Sort By Dropdown (shown for list view) */}
-      {viewMode === "list" && (
+      {/* Right: Sort By Dropdown */}
+      {showSort && (
         <div className="flex items-center gap-1.5 text-zinc-400 ml-auto shrink-0">
           <ArrowUpDown className="w-3.5 h-3.5 opacity-60" />
           <span className="text-zinc-400 text-xs hidden sm:inline">Sort:</span>
