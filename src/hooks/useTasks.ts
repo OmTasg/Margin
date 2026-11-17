@@ -9,10 +9,20 @@ export function useTasks(settings: UserSettings) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState<Priority | "all">("all");
+  const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
   const [sourceFilter, setSourceFilter] = useState<TaskSource | "all">("all");
   const [courseFilter, setCourseFilter] = useState<string | "all">("all");
   const [sortBy, setSortBy] = useState<SortOption>("dueDate");
+
+  const togglePriorityFilter = useCallback((p: Priority) => {
+    setSelectedPriorities((prev) => {
+      if (prev.includes(p)) {
+        return prev.filter((item) => item !== p);
+      } else {
+        return [...prev, p];
+      }
+    });
+  }, []);
 
   // Load tasks on mount
   useEffect(() => {
@@ -255,8 +265,8 @@ export function useTasks(settings: UserSettings) {
         if (!matchTitle && !matchNotes && !matchCourse) return false;
       }
 
-      // Priority
-      if (priorityFilter !== "all" && task.priority !== priorityFilter) {
+      // Priority Multi-Select
+      if (selectedPriorities.length > 0 && !selectedPriorities.includes(task.priority)) {
         return false;
       }
 
@@ -272,7 +282,7 @@ export function useTasks(settings: UserSettings) {
 
       return true;
     });
-  }, [tasks, searchQuery, priorityFilter, sourceFilter, courseFilter]);
+  }, [tasks, searchQuery, selectedPriorities, sourceFilter, courseFilter]);
 
   // Grouped active tasks
   const groupedTasks = useMemo(() => {
@@ -359,8 +369,9 @@ export function useTasks(settings: UserSettings) {
     isLoaded,
     searchQuery,
     setSearchQuery,
-    priorityFilter,
-    setPriorityFilter,
+    selectedPriorities,
+    setSelectedPriorities,
+    togglePriorityFilter,
     sourceFilter,
     setSourceFilter,
     courseFilter,

@@ -40,7 +40,7 @@ export function Header({
 }: Props) {
   return (
     <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 safe-top transition-colors">
-      <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-3">
         {/* Brand: Margin (Things 3 / Bear typographic aesthetic) */}
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2">
