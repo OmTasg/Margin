@@ -1,0 +1,44 @@
+{
+  "name": "FocusTask PWA",
+  "short_name": "FocusTask",
+  "description": "Fast, mobile-first personal task manager integrated with Canvas LMS and Google Calendar",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "New Task",
+      "url": "/?action=new",
+      "description": "Quickly add a new task"
+    },
+    {
+      "name": "Today's Tasks",
+      "url": "/?view=today",
+      "description": "View tasks due today"
+    }
+  ]
+}
