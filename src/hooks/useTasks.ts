@@ -93,6 +93,7 @@ export function useTasks(settings: UserSettings) {
         due_date: taskData.due_date || null,
         is_completed: false,
         reminder_lead_time_minutes: reminderLeadTime,
+        estimated_duration_minutes: taskData.estimated_duration_minutes || null,
         source: taskData.source || "manual",
         external_url: taskData.external_url || null,
         course_name: taskData.course_name ? taskData.course_name.toUpperCase() : null,

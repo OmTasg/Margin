@@ -12,6 +12,7 @@ export interface Task {
   is_completed: boolean;
   completed_at?: string | null;
   reminder_lead_time_minutes: number; // e.g. 15, 60, 180, 1440
+  estimated_duration_minutes?: number | null; // e.g. 15, 30, 45, 60, 120
   source: TaskSource;
   external_url?: string | null; // link back to Canvas assignment
   course_name?: string | null; // e.g. "CS106A", "Calculus III"

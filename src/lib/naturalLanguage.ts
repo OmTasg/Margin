@@ -6,6 +6,7 @@ export interface ParsedTaskInput {
   priority?: Priority;
   dueDate?: Date | null;
   courseName?: string;
+  estimatedDurationMinutes?: number | null;
 }
 
 const DAY_MAP: Record<string, Day> = {
@@ -91,7 +92,23 @@ export function parseNaturalLanguageTask(input: string): ParsedTaskInput {
     }
   }
 
-  // 4. Extract Date: today, tomorrow, day of week
+  // 4. Extract Estimated Duration (e.g. ~30m, 45m, 1h, 2hrs, 1.5h)
+  let estimatedDurationMinutes: number | null = null;
+  const hourMatch = title.match(/(?:^|\s)~?(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hours?)(?:$|\s)/i);
+  if (hourMatch) {
+    const hours = parseFloat(hourMatch[1]);
+    estimatedDurationMinutes = Math.round(hours * 60);
+    title = title.replace(hourMatch[0], " ").trim();
+  } else {
+    const minMatch = title.match(/(?:^|\s)~?(\d+)\s*(?:m|min|mins|minutes?)(?:$|\s)/i);
+    // Avoid conflicting with 5pm / 5am
+    if (minMatch && !minMatch[0].toLowerCase().includes("am") && !minMatch[0].toLowerCase().includes("pm")) {
+      estimatedDurationMinutes = parseInt(minMatch[1], 10);
+      title = title.replace(minMatch[0], " ").trim();
+    }
+  }
+
+  // 5. Extract Date: today, tomorrow, day of week
   const now = new Date();
   const todayMatch = title.match(/(?:^|\s)\b(today|tod)\b(?:$|\s)/i);
   if (todayMatch) {
@@ -137,5 +154,6 @@ export function parseNaturalLanguageTask(input: string): ParsedTaskInput {
     priority,
     dueDate,
     courseName,
+    estimatedDurationMinutes,
   };
 }

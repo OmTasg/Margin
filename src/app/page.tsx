@@ -193,11 +193,8 @@ export default function Home() {
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-5 safe-bottom">
-        {/* PWA Install Banner */}
-        <PWAInstallBanner />
-
+      {/* Main Content Area: Centered, Focused, Things 3 / Bear width */}
+      <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-6 safe-bottom">
         {/* Quick Add Sticky Input Bar */}
         <QuickAddBar
           settings={settings}

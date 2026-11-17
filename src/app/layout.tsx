@@ -2,14 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FocusTask - Mobile Task Manager with Canvas & GCal",
-  description:
-    "Fast, lightweight, mobile-first PWA personal task management integrated with Canvas LMS and Google Calendar.",
+  title: "Margin",
+  description: "Minimalist personal task manager with Canvas LMS and Google Calendar integration.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FocusTask",
+    title: "Margin",
   },
   icons: {
     icon: "/icons/icon-192x192.png",

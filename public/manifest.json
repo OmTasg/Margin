@@ -1,7 +1,7 @@
 {
-  "name": "FocusTask PWA",
-  "short_name": "FocusTask",
-  "description": "Fast, mobile-first personal task manager integrated with Canvas LMS and Google Calendar",
+  "name": "Margin",
+  "short_name": "Margin",
+  "description": "Minimalist personal task manager with Canvas LMS and Google Calendar integration",
   "start_url": "/",
   "id": "/",
   "display": "standalone",

@@ -22,6 +22,7 @@ export const INITIAL_SAMPLE_TASKS: Task[] = [
     due_date: new Date(Date.now() + 3 * 3600 * 1000).toISOString(), // 3 hours from now (Today)
     is_completed: false,
     reminder_lead_time_minutes: 60,
+    estimated_duration_minutes: 90,
     source: "canvas",
     course_name: "CS 106B",
     external_url: "https://canvas.stanford.edu/courses/106/assignments/2024",
@@ -39,6 +40,7 @@ export const INITIAL_SAMPLE_TASKS: Task[] = [
     due_date: new Date(Date.now() + 28 * 3600 * 1000).toISOString(), // Tomorrow
     is_completed: false,
     reminder_lead_time_minutes: 180, // 3 hours before
+    estimated_duration_minutes: 45,
     source: "canvas",
     course_name: "PHYS 41",
     external_url: "https://canvas.stanford.edu/courses/41/assignments/1099",
@@ -55,6 +57,7 @@ export const INITIAL_SAMPLE_TASKS: Task[] = [
     due_date: new Date(Date.now() + 72 * 3600 * 1000).toISOString(), // 3 days from now
     is_completed: false,
     reminder_lead_time_minutes: 1440, // 1 day before
+    estimated_duration_minutes: 120,
     source: "manual",
     course_name: "SENIOR SEMINAR",
     created_at: new Date().toISOString(),
