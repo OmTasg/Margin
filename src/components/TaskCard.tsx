@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Task, UserSettings } from "@/lib/types";
 import { format, isToday, isTomorrow, isPast, formatDistanceToNow } from "date-fns";
+import { generateGoogleCalendarUrl } from "@/lib/google/calendarUrl";
 
 interface Props {
   task: Task;
@@ -231,27 +232,18 @@ export function TaskCard({
             </a>
           )}
 
-          {/* Google Calendar Sync Indicator / Button */}
-          {task.is_pushed_to_google ? (
-            <span
-              title="Synced with Google Calendar"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40"
-            >
-              <Calendar className="w-3 h-3 text-emerald-600" />
-              <span>GCal Synced</span>
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={handlePushGCal}
-              disabled={isPushing}
-              title="Push this task to Google Calendar"
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-zinc-200 dark:border-zinc-700 transition"
-            >
-              <Send className={`w-3 h-3 ${isPushing ? "animate-pulse" : ""}`} />
-              <span>{isPushing ? "Pushing..." : "Push GCal"}</span>
-            </button>
-          )}
+          {/* Google Calendar Add Button (Direct 1-Click, Zero-OAuth needed) */}
+          <a
+            href={generateGoogleCalendarUrl(task)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Add this task to Google Calendar (1-click)"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-800 transition active:scale-95"
+          >
+            <Calendar className="w-3 h-3 text-emerald-600" />
+            <span>+ GCal</span>
+          </a>
         </div>
       </div>
 
