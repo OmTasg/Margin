@@ -40,6 +40,7 @@ export interface UserSettings {
   default_reminder_lead_time_minutes: number; // default 15
   canvas_ics_url: string;
   canvas_last_synced_at?: string | null;
+  canvas_open_in_app?: boolean; // open Canvas assignment links directly in native Canvas Student app on mobile
   hide_virtual_classes?: boolean; // filter out Zoom/class lecture calendar events from todo list
   notifications_enabled?: boolean; // enable browser & device push notifications
   notification_sound_enabled?: boolean; // play subtle audio chime on reminder

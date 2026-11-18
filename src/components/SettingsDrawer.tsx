@@ -481,6 +481,26 @@ export function SettingsDrawer({
                 </p>
               </div>
             </label>
+
+            {/* Open in Canvas App Toggle on mobile */}
+            <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={settings.canvas_open_in_app !== false}
+                onChange={(e) =>
+                  onUpdateSettings({ canvas_open_in_app: e.target.checked })
+                }
+                className="mt-0.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                  Open in Canvas Student App (Mobile)
+                </span>
+                <p className="text-[11px] text-zinc-400">
+                  Launches assignment links directly in the official Canvas Student app on mobile instead of opening in Safari.
+                </p>
+              </div>
+            </label>
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />

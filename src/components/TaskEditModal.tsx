@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { Task, Priority, UserSettings, TaskCategory } from "@/lib/types";
-import { CATEGORY_CONFIG, inferTaskCategory } from "@/lib/canvasUtils";
+import {
+  CATEGORY_CONFIG,
+  inferTaskCategory,
+  getCanvasAppDeepLink,
+} from "@/lib/canvasUtils";
 import {
   X,
   Calendar,
@@ -157,9 +161,27 @@ export function TaskEditModal({
             </h3>
             {task.external_url && (
               <a
-                href={task.external_url}
+                href={
+                  typeof navigator !== "undefined" &&
+                  /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) &&
+                  settings.canvas_open_in_app !== false
+                    ? getCanvasAppDeepLink(task.external_url) || task.external_url
+                    : task.external_url
+                }
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => {
+                  const isMobile =
+                    typeof navigator !== "undefined" &&
+                    /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+                  if (isMobile && settings.canvas_open_in_app !== false) {
+                    const deepLink = getCanvasAppDeepLink(task.external_url);
+                    if (deepLink) {
+                      e.preventDefault();
+                      window.location.href = deepLink;
+                    }
+                  }
+                }}
                 className="text-xs text-blue-500 hover:underline inline-flex items-center gap-0.5"
               >
                 <span>Canvas</span>

@@ -14,6 +14,7 @@ import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { generateGoogleCalendarUrl } from "@/lib/google/calendarUrl";
 import {
   resolveDirectCanvasUrl,
+  getCanvasAppDeepLink,
   CATEGORY_CONFIG,
   inferTaskCategory,
   isLectureOrMeeting,
@@ -200,10 +201,33 @@ export function TaskCard({
         <div className="flex items-center gap-1.5 leading-snug">
           {directCanvasUrl ? (
             <a
-              href={directCanvasUrl}
+              href={
+                typeof navigator !== "undefined" &&
+                /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) &&
+                settings.canvas_open_in_app !== false
+                  ? getCanvasAppDeepLink(directCanvasUrl) || directCanvasUrl
+                  : directCanvasUrl
+              }
               target="_blank"
               rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                const isMobile =
+                  typeof navigator !== "undefined" &&
+                  /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile && settings.canvas_open_in_app !== false) {
+                  const deepLink = getCanvasAppDeepLink(directCanvasUrl);
+                  if (deepLink) {
+                    e.preventDefault();
+                    window.location.href = deepLink;
+                  }
+                }
+              }}
+              title={
+                settings.canvas_open_in_app !== false
+                  ? "Open in Canvas Student App"
+                  : "Open in Canvas Web"
+              }
               className={`text-sm font-medium transition inline-flex items-center gap-1 hover:underline ${
                 task.is_completed
                   ? "line-through text-zinc-400 dark:text-zinc-500"

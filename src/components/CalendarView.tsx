@@ -34,6 +34,7 @@ import {
 } from "date-fns";
 import {
   resolveDirectCanvasUrl,
+  getCanvasAppDeepLink,
   CATEGORY_CONFIG,
   inferTaskCategory,
   isLectureOrMeeting,
@@ -720,10 +721,28 @@ export function CalendarView({
                           {/* Direct Canvas link */}
                           {directUrl && !zoomUrl && (
                             <a
-                              href={directUrl}
+                              href={
+                                typeof navigator !== "undefined" &&
+                                /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) &&
+                                settings.canvas_open_in_app !== false
+                                  ? getCanvasAppDeepLink(directUrl) || directUrl
+                                  : directUrl
+                              }
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const isMobile =
+                                  typeof navigator !== "undefined" &&
+                                  /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+                                if (isMobile && settings.canvas_open_in_app !== false) {
+                                  const deepLink = getCanvasAppDeepLink(directUrl);
+                                  if (deepLink) {
+                                    e.preventDefault();
+                                    window.location.href = deepLink;
+                                  }
+                                }
+                              }}
                               className="inline-flex items-center gap-0.5 font-medium text-blue-600 dark:text-blue-400 hover:underline ml-auto"
                             >
                               <span>Canvas</span>

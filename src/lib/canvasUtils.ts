@@ -284,3 +284,47 @@ export function isMoreThanTwoDaysOverdue(dueDateStr: string | null | undefined):
   const twoDaysMs = 48 * 60 * 60 * 1000;
   return Date.now() - dueDate.getTime() > twoDaysMs;
 }
+
+/**
+ * Converts a standard Canvas web URL into a native Canvas Student iOS/Android app deep link.
+ * Protocol: canvas-courses://<host>/<path>
+ * e.g. https://gatech.instructure.com/courses/123/assignments/456 -> canvas-courses://gatech.instructure.com/courses/123/assignments/456
+ */
+export function getCanvasAppDeepLink(webUrl: string | null | undefined): string | null {
+  if (!webUrl) return null;
+  const trimmed = webUrl.trim();
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) return null;
+  return trimmed.replace(/^https?:\/\//i, "canvas-courses://");
+}
+
+/**
+ * Resolves whether a Canvas link should open via the native Canvas Student app (on mobile devices)
+ * or via standard web browser (on desktop).
+ */
+export function getSmartCanvasUrl(
+  webUrl: string | null | undefined,
+  openInApp: boolean = true
+): {
+  targetUrl: string | null;
+  webUrl: string | null;
+  appUrl: string | null;
+  isMobile: boolean;
+} {
+  if (!webUrl) {
+    return { targetUrl: null, webUrl: null, appUrl: null, isMobile: false };
+  }
+
+  const isMobile =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+
+  const appUrl = getCanvasAppDeepLink(webUrl);
+  const targetUrl = isMobile && openInApp && appUrl ? appUrl : webUrl;
+
+  return {
+    targetUrl,
+    webUrl,
+    appUrl,
+    isMobile,
+  };
+}

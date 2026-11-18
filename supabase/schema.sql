@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     default_reminder_lead_time_minutes INTEGER NOT NULL DEFAULT 15,
     canvas_ics_url TEXT,
     canvas_last_synced_at TIMESTAMPTZ,
+    canvas_open_in_app BOOLEAN NOT NULL DEFAULT TRUE,
     hide_virtual_classes BOOLEAN NOT NULL DEFAULT TRUE,
     notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     notification_sound_enabled BOOLEAN NOT NULL DEFAULT TRUE,
