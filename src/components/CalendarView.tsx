@@ -203,25 +203,46 @@ export function CalendarView({
   return (
     <div className="space-y-4">
       {/* Top Header Navigation & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800/80">
-        <div className="flex items-center gap-3">
-          <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            {format(currentMonth, "MMMM yyyy")}
-          </h2>
-          <button
-            onClick={goToToday}
-            className="px-2.5 py-1 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-          >
-            Today
-          </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-zinc-200/80 dark:border-zinc-800/80">
+        {/* Row 1 on mobile: Month + Navigation Controls */}
+        <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+              {format(currentMonth, "MMMM yyyy")}
+            </h2>
+            <button
+              onClick={goToToday}
+              className="px-2 py-0.5 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            >
+              Today
+            </button>
+          </div>
+
+          {/* Month pagination arrows */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={prevMonth}
+              aria-label="Previous month"
+              className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={nextMonth}
+              aria-label="Next month"
+              className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Hide / Show Lectures Toggle */}
+        {/* Row 2 on mobile / Right side on desktop: Hide / Show Lectures Toggle */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleToggleHideLectures}
-            className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all flex items-center gap-1.5 shadow-sm ${
+            className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-medium rounded-xl border transition-all flex items-center justify-center gap-1.5 shadow-sm ${
               effectiveHideLectures
                 ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300/80 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/50"
                 : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700"
@@ -244,60 +265,32 @@ export function CalendarView({
               </>
             )}
           </button>
-
-          {/* Re-open Day Schedule if closed */}
-          {selectedDay && !isDayPanelOpen && (
-            <button
-              onClick={() => setIsDayPanelOpen(true)}
-              className="px-2.5 py-1 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition flex items-center gap-1.5"
-            >
-              <CalendarIcon className="w-3.5 h-3.5 text-blue-500" />
-              <span>Show {format(selectedDay, "MMM d")} Schedule</span>
-            </button>
-          )}
-
-          {/* Month Prev/Next Pagination */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={prevMonth}
-              aria-label="Previous month"
-              className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={nextMonth}
-              aria-label="Next month"
-              className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Main Responsive Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Month Grid: Expands to 12 cols when day panel is closed; takes 6 cols (50%) when split; hidden when day view is maximized */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Month Grid: Full width on mobile; takes 6 cols (50%) on desktop when day panel is open */}
         {(!isMaximized || !isDayPanelOpen) && (
           <div
-            className={`transition-all duration-200 ${
+            className={`w-full transition-all duration-200 ${
               isDayPanelOpen && selectedDay
-                ? "lg:col-span-6 xl:col-span-6"
-                : "lg:col-span-12"
+                ? "col-span-1 lg:col-span-6 xl:col-span-6"
+                : "col-span-1 lg:col-span-12"
             }`}
           >
-            {/* Weekday Labels */}
-            <div className="grid grid-cols-7 gap-px text-center text-xs font-semibold text-zinc-400 dark:text-zinc-500 pb-1">
-              {weekDayNames.map((name) => (
+            {/* Weekday Labels - Single letters on mobile so they never collide! */}
+            <div className="w-full grid grid-cols-7 gap-1 text-center text-xs font-semibold text-zinc-400 dark:text-zinc-500 pb-1">
+              {weekDayNames.map((name, i) => (
                 <div key={name} className="py-1">
-                  {name}
+                  <span className="sm:hidden">{["S", "M", "T", "W", "T", "F", "S"][i]}</span>
+                  <span className="hidden sm:inline">{name}</span>
                 </div>
               ))}
             </div>
 
-            {/* Month Days Grid */}
-            <div className="grid grid-cols-7 gap-px bg-zinc-200/60 dark:bg-zinc-800/60 rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+            {/* Month Days Grid - Edge-to-edge full width on mobile */}
+            <div className="w-full grid grid-cols-7 gap-1 sm:gap-px bg-zinc-200/50 sm:bg-zinc-200/60 dark:bg-zinc-800/40 sm:dark:bg-zinc-800/60 rounded-2xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm p-1 sm:p-0">
               {calendarDays.map((dayItem, idx) => {
                 const dayKey = format(dayItem, "yyyy-MM-dd");
                 const dayTasks = tasksByDay.get(dayKey) || [];
@@ -309,22 +302,22 @@ export function CalendarView({
                   <div
                     key={idx}
                     onClick={() => handleSelectDay(dayItem)}
-                    className={`min-h-[46px] sm:min-h-[75px] md:min-h-[105px] p-1 sm:p-2 bg-white dark:bg-[#14151c] transition-colors cursor-pointer flex flex-col justify-between group ${
-                      !isCurrentMonth ? "opacity-35" : ""
+                    className={`w-full aspect-square sm:aspect-auto sm:min-h-[75px] md:min-h-[105px] p-1 sm:p-2 rounded-xl sm:rounded-none bg-white dark:bg-[#14151c] transition-colors cursor-pointer flex flex-col items-center sm:items-stretch justify-between group ${
+                      !isCurrentMonth ? "opacity-30" : ""
                     } ${
                       isSelected
-                        ? "ring-2 ring-blue-500 bg-blue-50/20 dark:bg-blue-950/20 z-10"
+                        ? "ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-950/30 z-10 font-bold shadow-sm"
                         : "hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                     }`}
                   >
                     {/* Day Number Header */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-center sm:justify-between w-full">
                       <span
-                        className={`text-xs font-semibold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full transition ${
+                        className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full transition ${
                           isCurrentDay
                             ? "bg-blue-600 text-white font-bold shadow-sm"
                             : isSelected
-                            ? "bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+                            ? "bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold"
                             : "text-zinc-700 dark:text-zinc-300"
                         }`}
                       >
@@ -345,8 +338,8 @@ export function CalendarView({
                       </button>
                     </div>
 
-                    {/* Mobile Dot Indicators (< md screens): clean, compact, unsquashed! */}
-                    <div className="flex md:hidden items-center justify-center gap-0.5 mt-auto pt-1 pb-0.5">
+                    {/* Mobile Dot Indicators (< md screens): clean, compact, centered, unsquashed! */}
+                    <div className="flex md:hidden items-center justify-center gap-1 mt-auto pb-1">
                       {dayTasks.slice(0, 3).map((task) => (
                         <span
                           key={task.id}
@@ -414,10 +407,10 @@ export function CalendarView({
         {isDayPanelOpen && selectedDay && (
           <div
             ref={dayPanelRef}
-            className={`${
+            className={`w-full ${
               isMaximized
-                ? "col-span-12"
-                : "col-span-12 lg:col-span-6 xl:col-span-6"
+                ? "col-span-1 lg:col-span-12"
+                : "col-span-1 lg:col-span-6 xl:col-span-6"
             } bg-zinc-50/90 dark:bg-[#181922] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-150 lg:sticky lg:top-20 mt-3 lg:mt-0`}
           >
             {/* Day Header with Day Flipping Arrows and Actions */}
