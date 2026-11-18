@@ -11,6 +11,7 @@ import {
   isLectureOrMeeting,
   inferTaskCategory,
 } from "@/lib/canvasUtils";
+import { calculateNextTaskOccurrence } from "@/lib/recurrenceUtils";
 import { isToday, isTomorrow, isPast, startOfDay } from "date-fns";
 
 export function useTasks(settings: UserSettings) {
@@ -358,11 +359,20 @@ export function useTasks(settings: UserSettings) {
   const toggleTaskComplete = useCallback(
     (taskId: string) => {
       let isCompletedAfterToggle = false;
+      let nextRecurringTask: Task | null = null;
+
       setTasks((prev) => {
+        let spawnedTask: Task | null = null;
         const next = prev.map((t) => {
           if (t.id === taskId) {
             const isNowCompleted = !t.is_completed;
             isCompletedAfterToggle = isNowCompleted;
+
+            // If completing a recurring task, calculate next occurrence
+            if (isNowCompleted && t.recurrence && t.recurrence.frequency !== "none") {
+              spawnedTask = calculateNextTaskOccurrence(t);
+            }
+
             return {
               ...t,
               is_completed: isNowCompleted,
@@ -372,12 +382,21 @@ export function useTasks(settings: UserSettings) {
           }
           return t;
         });
+
+        if (spawnedTask) {
+          nextRecurringTask = spawnedTask;
+          const updatedWithSpawned = [spawnedTask, ...next];
+          saveLocalTasks(updatedWithSpawned);
+          return updatedWithSpawned;
+        }
+
         saveLocalTasks(next);
         return next;
       });
 
       if (isSupabaseConfigured()) {
-        createClient()
+        const client = createClient();
+        client
           .from("tasks")
           .update({
             is_completed: isCompletedAfterToggle,
@@ -385,6 +404,10 @@ export function useTasks(settings: UserSettings) {
           })
           .eq("id", taskId)
           .then();
+
+        if (nextRecurringTask) {
+          client.from("tasks").insert(nextRecurringTask).then();
+        }
       }
     },
     []

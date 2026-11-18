@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Task, Priority, UserSettings, TaskCategory } from "@/lib/types";
+import { Task, Priority, UserSettings, TaskCategory, RecurrenceRule } from "@/lib/types";
 import {
   CATEGORY_CONFIG,
   inferTaskCategory,
   getCanvasAppDeepLink,
 } from "@/lib/canvasUtils";
+import { RecurrenceSelector } from "@/components/RecurrenceSelector";
 import {
   X,
   Calendar,
@@ -16,6 +17,7 @@ import {
   Trash2,
   Hourglass,
   ArrowUpRight,
+  Repeat,
 } from "lucide-react";
 
 interface Props {
@@ -45,6 +47,7 @@ export function TaskEditModal({
   const [estimatedDuration, setEstimatedDuration] = useState<number | null>(null);
   const [courseName, setCourseName] = useState("");
   const [externalUrl, setExternalUrl] = useState("");
+  const [recurrence, setRecurrence] = useState<RecurrenceRule | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -56,6 +59,7 @@ export function TaskEditModal({
       setCourseName(task.course_name || "");
       setExternalUrl(task.external_url || "");
       setEstimatedDuration(task.estimated_duration_minutes ?? null);
+      setRecurrence(task.recurrence || null);
       setReminderMinutes(
         typeof task.reminder_lead_time_minutes === "number"
           ? task.reminder_lead_time_minutes
@@ -113,6 +117,7 @@ export function TaskEditModal({
         estimated_duration_minutes: estimatedDuration,
         course_name: courseName.trim() ? courseName.trim().toUpperCase() : null,
         external_url: externalUrl.trim() || null,
+        recurrence: recurrence || null,
       });
 
       onClose();
@@ -198,7 +203,7 @@ export function TaskEditModal({
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+        <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain text-xs">
           {/* Category Chips */}
           <div>
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
@@ -324,6 +329,19 @@ export function TaskEditModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Recurrence (Google Calendar style) */}
+          <div>
+            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
+              <Repeat className="w-3 h-3 opacity-60 text-blue-500" />
+              <span>Repeat</span>
+            </label>
+            <RecurrenceSelector
+              value={recurrence}
+              onChange={setRecurrence}
+              referenceDate={dueDateStr || new Date()}
+            />
           </div>
 
           {/* Reminder & Course */}

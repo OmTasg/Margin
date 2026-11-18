@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     external_url TEXT,
     course_name TEXT,
     canvas_uid TEXT,
+    recurrence JSONB,
+    recurring_parent_id TEXT,
     google_event_id TEXT,
     google_calendar_id TEXT,
     is_pushed_to_google BOOLEAN NOT NULL DEFAULT FALSE,
@@ -57,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON public.tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON public.tasks(due_date);
 CREATE INDEX IF NOT EXISTS idx_tasks_is_completed ON public.tasks(is_completed);
+CREATE INDEX IF NOT EXISTS idx_tasks_recurring_parent_id ON public.tasks(recurring_parent_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_canvas_uid ON public.tasks(canvas_uid);
 CREATE INDEX IF NOT EXISTS idx_tasks_google_event_id ON public.tasks(google_event_id);
 CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON public.user_settings(user_id);

@@ -17,6 +17,7 @@ import {
   Minimize2,
   Hourglass,
   Layers,
+  Repeat,
 } from "lucide-react";
 import {
   format,
@@ -39,6 +40,7 @@ import {
   inferTaskCategory,
   isLectureOrMeeting,
 } from "@/lib/canvasUtils";
+import { getRecurrenceLabel } from "@/lib/recurrenceUtils";
 
 interface Props {
   tasks: Task[];
@@ -700,6 +702,14 @@ export function CalendarView({
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-medium">
                               <Video className="w-3 h-3" />
                               <span>Virtual Lecture</span>
+                            </span>
+                          )}
+
+                          {/* Recurrence badge */}
+                          {task.recurrence && task.recurrence.frequency !== "none" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-medium border border-blue-200/50 dark:border-blue-900/40">
+                              <Repeat className="w-3 h-3" />
+                              <span>{getRecurrenceLabel(task.recurrence, task.due_date)}</span>
                             </span>
                           )}
 

@@ -8,6 +8,8 @@ import {
   Trash2,
   Edit2,
   Clock,
+  Video,
+  Repeat,
 } from "lucide-react";
 import { Task, UserSettings, TaskCategory } from "@/lib/types";
 import { format, isToday, isTomorrow, isPast } from "date-fns";
@@ -19,7 +21,7 @@ import {
   inferTaskCategory,
   isLectureOrMeeting,
 } from "@/lib/canvasUtils";
-import { Video } from "lucide-react";
+import { getRecurrenceLabel } from "@/lib/recurrenceUtils";
 
 interface Props {
   task: Task;
@@ -151,6 +153,19 @@ export function TaskCard({
         }
       >
         {dueInfo.text}
+      </span>
+    );
+  }
+
+  // 4. Recurrence Badge
+  if (task.recurrence && task.recurrence.frequency !== "none") {
+    metaItems.push(
+      <span
+        key="recurrence"
+        className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md border border-blue-200/50 dark:border-blue-900/40"
+      >
+        <Repeat className="w-2.5 h-2.5" />
+        <span>{getRecurrenceLabel(task.recurrence, task.due_date)}</span>
       </span>
     );
   }

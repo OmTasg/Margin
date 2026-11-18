@@ -10,6 +10,26 @@ export type TaskCategory =
   | "cooking"
   | "personal";
 
+export type RecurrenceFrequency =
+  | "none"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "yearly"
+  | "weekdays"
+  | "custom";
+
+export interface RecurrenceRule {
+  frequency: RecurrenceFrequency;
+  interval?: number; // e.g. repeat every 1, 2 weeks/days
+  unit?: "day" | "week" | "month" | "year"; // for custom frequency
+  days_of_week?: number[]; // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  ends_type: "never" | "on_date" | "after_occurrences";
+  ends_on_date?: string | null; // "YYYY-MM-DD"
+  ends_after_count?: number | null; // e.g. after 13 occurrences
+  occurrence_count?: number; // 1-indexed count of occurrences completed/spawned
+}
+
 export interface Task {
   id: string;
   user_id?: string;
@@ -27,6 +47,8 @@ export interface Task {
   external_url?: string | null; // link back to Canvas assignment
   course_name?: string | null; // e.g. "ISYE 3232", "CS106A", "Calculus III"
   canvas_uid?: string | null; // iCal UID for deduplication
+  recurrence?: RecurrenceRule | null; // Google Calendar style recurring task rule
+  recurring_parent_id?: string | null; // ID of first task in the recurring series
   google_event_id?: string | null; // Created Google Calendar event ID
   google_calendar_id?: string | null;
   is_pushed_to_google?: boolean;

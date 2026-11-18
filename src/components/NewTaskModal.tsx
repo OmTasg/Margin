@@ -10,9 +10,11 @@ import {
   Bell,
   Sparkles,
   Check,
+  Repeat,
 } from "lucide-react";
-import { Priority, Task, UserSettings, TaskCategory } from "@/lib/types";
+import { Priority, Task, UserSettings, TaskCategory, RecurrenceRule } from "@/lib/types";
 import { CATEGORY_CONFIG, inferTaskCategory } from "@/lib/canvasUtils";
+import { RecurrenceSelector } from "@/components/RecurrenceSelector";
 import { addDays, format, nextMonday, nextFriday } from "date-fns";
 
 interface Props {
@@ -45,6 +47,9 @@ export function NewTaskModal({
   const [reminderMinutes, setReminderMinutes] = useState(
     settings.default_reminder_lead_time_minutes
   );
+
+  // Recurrence rule (Google Calendar style)
+  const [recurrence, setRecurrence] = useState<RecurrenceRule | null>(null);
 
   // Date state
   const [selectedDateMode, setSelectedDateMode] = useState<
@@ -100,6 +105,7 @@ export function NewTaskModal({
       setCustomCourse("");
       setIsAddingNewCourse(false);
       setDurationMinutes(null);
+      setRecurrence(null);
     }
   }, [isOpen]);
 
@@ -163,6 +169,7 @@ export function NewTaskModal({
         reminder_lead_time_minutes: reminderMinutes,
         estimated_duration_minutes: durationMinutes,
         course_name: category === "course" && finalCourse ? finalCourse.toUpperCase() : null,
+        recurrence: recurrence || null,
         source: "manual",
       });
 
@@ -213,9 +220,11 @@ export function NewTaskModal({
           </button>
         </div>
 
-        {/* Scrollable Task Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-4 overscroll-contain">
-          {/* Category Quick Chips */}
+        {/* Form enclosing scrollable body and pinned footer */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Scrollable Task Form Body */}
+          <div className="p-5 overflow-y-auto flex-1 min-h-0 space-y-4 overscroll-contain">
+            {/* Category Quick Chips */}
           <div>
             <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
               Task Type
@@ -375,6 +384,19 @@ export function NewTaskModal({
                 )}
               </div>
             )}
+
+            {/* Recurrence (Google Calendar style) */}
+            <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 mb-2">
+                <Repeat className="w-3.5 h-3.5 text-blue-500" />
+                <span>Repeat</span>
+              </label>
+              <RecurrenceSelector
+                value={recurrence}
+                onChange={setRecurrence}
+                referenceDate={computeFinalDueDate() || new Date()}
+              />
+            </div>
           </div>
 
           {/* Priority & (Optional) Course Row */}
@@ -516,31 +538,32 @@ export function NewTaskModal({
               </select>
             </div>
           </div>
+        </div>
 
-          {/* Footer Action Buttons */}
-          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
-            <span className="text-[11px] text-zinc-400 hidden sm:inline">
-              Tip: Press <kbd className="font-mono px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">⌘+Enter</kbd> to save
-            </span>
+        {/* Pinned Footer Action Buttons: Always visible, never cut off */}
+        <div className="px-5 py-3.5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0 flex items-center justify-between">
+          <span className="text-[11px] text-zinc-400 hidden sm:inline">
+            Tip: Press <kbd className="font-mono px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">⌘+Enter</kbd> to save
+          </span>
 
-            <div className="flex items-center gap-2 ml-auto w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!title.trim() || isSubmitting}
-                className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition shadow-sm disabled:opacity-40"
-              >
-                {isSubmitting ? "Creating..." : "Create Task"}
-              </button>
-            </div>
+          <div className="flex items-center gap-2 ml-auto w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition rounded-xl"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!title.trim() || isSubmitting}
+              className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition shadow-sm disabled:opacity-40"
+            >
+              {isSubmitting ? "Creating..." : "Create Task"}
+            </button>
           </div>
-        </form>
+        </div>
+      </form>
       </div>
     </div>
   );
