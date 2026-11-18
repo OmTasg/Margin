@@ -244,14 +244,14 @@ export default function Home() {
 
       {/* Main Responsive Canvas: Wide on laptop/desktop, comfortable padding, elevated surface card */}
       <main
-        className={`flex-1 w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 safe-bottom transition-all duration-200 ${
+        className={`flex-1 w-full mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-7 safe-bottom transition-all duration-200 ${
           currentView === "calendar"
             ? "max-w-7xl 2xl:max-w-[1500px]"
             : "max-w-5xl lg:max-w-6xl"
         }`}
       >
         {/* Elevated Surface Card Container with strong contrast separation from background */}
-        <div className="bg-white dark:bg-[#14151c] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl shadow-sm p-4 sm:p-7 transition-colors">
+        <div className="bg-white dark:bg-[#14151c] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl shadow-sm p-3 sm:p-7 transition-colors">
           {/* Prominent View Navigation Tab Bar with counts & + New Task button */}
           <ViewTabBar
             currentView={currentView}

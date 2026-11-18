@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Task, UserSettings, Priority, TaskCategory } from "@/lib/types";
 import {
   ChevronLeft,
@@ -62,6 +62,7 @@ export function CalendarView({
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [isDayPanelOpen, setIsDayPanelOpen] = useState(true);
   const [isMaximized, setIsMaximized] = useState(false);
+  const dayPanelRef = useRef<HTMLDivElement>(null);
   const [localHideLectures, setLocalHideLectures] = useState<boolean>(
     hideLectures !== undefined ? hideLectures : true
   );
@@ -191,6 +192,12 @@ export function CalendarView({
   const handleSelectDay = (dayItem: Date) => {
     setSelectedDay(dayItem);
     setIsDayPanelOpen(true);
+    // On mobile (< 1024px), smoothly scroll the day schedule below into view
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setTimeout(() => {
+        dayPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 50);
+    }
   };
 
   return (
@@ -302,7 +309,7 @@ export function CalendarView({
                   <div
                     key={idx}
                     onClick={() => handleSelectDay(dayItem)}
-                    className={`min-h-[85px] sm:min-h-[110px] p-1.5 sm:p-2 bg-white dark:bg-[#14151c] transition-colors cursor-pointer flex flex-col justify-between group ${
+                    className={`min-h-[46px] sm:min-h-[75px] md:min-h-[105px] p-1 sm:p-2 bg-white dark:bg-[#14151c] transition-colors cursor-pointer flex flex-col justify-between group ${
                       !isCurrentMonth ? "opacity-35" : ""
                     } ${
                       isSelected
@@ -313,7 +320,7 @@ export function CalendarView({
                     {/* Day Number Header */}
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full transition ${
+                        className={`text-xs font-semibold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full transition ${
                           isCurrentDay
                             ? "bg-blue-600 text-white font-bold shadow-sm"
                             : isSelected
@@ -324,7 +331,7 @@ export function CalendarView({
                         {format(dayItem, "d")}
                       </span>
 
-                      {/* Quick Add Button on Day Hover */}
+                      {/* Quick Add Button on Day Hover (desktop only) */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -332,14 +339,31 @@ export function CalendarView({
                           onAddTaskOnDate(dayItem);
                         }}
                         title={`Add task on ${format(dayItem, "MMM d")}`}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md transition"
+                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md transition hidden sm:block"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    {/* Task Items inside Day Cell */}
-                    <div className="mt-1 space-y-1 flex-1 overflow-hidden">
+                    {/* Mobile Dot Indicators (< md screens): clean, compact, unsquashed! */}
+                    <div className="flex md:hidden items-center justify-center gap-0.5 mt-auto pt-1 pb-0.5">
+                      {dayTasks.slice(0, 3).map((task) => (
+                        <span
+                          key={task.id}
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${getPriorityDot(
+                            task.priority
+                          )}`}
+                        />
+                      ))}
+                      {dayTasks.length > 3 && (
+                        <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 leading-none">
+                          +{dayTasks.length - 3}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Desktop Task Item Badges (md: screens and up) */}
+                    <div className="hidden md:block mt-1 space-y-1 flex-1 overflow-hidden">
                       {dayTasks.slice(0, 3).map((task) => {
                         const isMeeting =
                           task.is_lecture_or_meeting || isLectureOrMeeting(task);
@@ -389,11 +413,12 @@ export function CalendarView({
         {/* Large, Google Calendar-inspired Single Day Schedule Panel */}
         {isDayPanelOpen && selectedDay && (
           <div
+            ref={dayPanelRef}
             className={`${
               isMaximized
                 ? "col-span-12"
                 : "col-span-12 lg:col-span-6 xl:col-span-6"
-            } bg-zinc-50/90 dark:bg-[#181922] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-150 sticky top-20`}
+            } bg-zinc-50/90 dark:bg-[#181922] border border-zinc-200/90 dark:border-zinc-800/90 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-150 lg:sticky lg:top-20 mt-3 lg:mt-0`}
           >
             {/* Day Header with Day Flipping Arrows and Actions */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800/80">

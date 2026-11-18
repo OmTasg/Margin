@@ -68,6 +68,18 @@ export function NewTaskModal({
     }
   }, [initialDate, isOpen]);
 
+  // Lock body scroll when modal is open to prevent background scrolling on mobile
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   // Focus title on open
   useEffect(() => {
     if (isOpen) {
@@ -172,16 +184,19 @@ export function NewTaskModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-task-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-white dark:bg-[#14151c] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl p-5 sm:p-6 text-foreground space-y-5 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-xl bg-white dark:bg-[#14151c] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] text-foreground animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-150 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
+        {/* Mobile drag handle */}
+        <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mt-2.5 sm:hidden shrink-0" />
+
+        {/* Header - Fixed at top of modal */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800/80 shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 dark:bg-blue-400"></span>
             <h2 id="new-task-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -198,8 +213,8 @@ export function NewTaskModal({
           </button>
         </div>
 
-        {/* Task Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Scrollable Task Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-4 overscroll-contain">
           {/* Category Quick Chips */}
           <div>
             <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
@@ -508,18 +523,18 @@ export function NewTaskModal({
               Tip: Press <kbd className="font-mono px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">⌘+Enter</kbd> to save
             </span>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-2 ml-auto w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
+                className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!title.trim() || isSubmitting}
-                className="px-5 py-2 text-xs font-semibold rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition shadow-sm disabled:opacity-40"
+                className="flex-1 sm:flex-initial px-5 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition shadow-sm disabled:opacity-40"
               >
                 {isSubmitting ? "Creating..." : "Create Task"}
               </button>
