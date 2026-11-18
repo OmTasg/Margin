@@ -15,6 +15,8 @@ import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { ToastContainer, ToastMessage } from "@/components/Toast";
 import { Task } from "@/lib/types";
+import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
+import { Bell } from "lucide-react";
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
@@ -77,6 +79,28 @@ export default function Home() {
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  const [isNotifBannerDismissed, setIsNotifBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsNotifBannerDismissed(
+        localStorage.getItem("margin_notif_banner_dismissed") === "true"
+      );
+    }
+  }, []);
+
+  // Automated background reminder and notification scheduler
+  const {
+    permission: notificationPermission,
+    requestPermission: requestNotifications,
+  } = useNotificationScheduler({
+    tasks,
+    settings,
+    onNotifyInApp: (info) => {
+      addToast(info.type === "warning" ? "info" : "info", `${info.title}: ${info.message}`);
+    },
+  });
 
   // Check URL parameters for OAuth callbacks
   useEffect(() => {
@@ -215,6 +239,7 @@ export default function Home() {
         onSearchChange={setSearchQuery}
         theme={theme}
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+        notificationPermission={notificationPermission}
       />
 
       {/* Main Responsive Canvas: Wide on laptop/desktop, comfortable padding, elevated surface card */}
@@ -242,6 +267,43 @@ export default function Home() {
               setIsNewTaskOpen(true);
             }}
           />
+
+          {/* Gentle Notification Permission Banner if not yet enabled */}
+          {notificationPermission === "default" && !isNotifBannerDismissed && (
+            <div className="mb-4 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-blue-900 dark:text-blue-200 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>
+                  Never miss an assignment due date — Enable notifications to get timely reminders for your tasks.
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await requestNotifications();
+                    if (res === "granted") {
+                      updateSettings({ notifications_enabled: true });
+                      addToast("success", "Notifications enabled successfully!");
+                    }
+                  }}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition shadow-sm"
+                >
+                  Enable
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNotifBannerDismissed(true);
+                    localStorage.setItem("margin_notif_banner_dismissed", "true");
+                  }}
+                  className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-200 text-xs transition px-1"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Filter Bar (Multi-Select Classes, Categories, Hide Zoom Lectures, Priorities, Sort) */}
           {currentView !== "calendar" && (

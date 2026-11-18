@@ -41,6 +41,9 @@ export interface UserSettings {
   canvas_ics_url: string;
   canvas_last_synced_at?: string | null;
   hide_virtual_classes?: boolean; // filter out Zoom/class lecture calendar events from todo list
+  notifications_enabled?: boolean; // enable browser & device push notifications
+  notification_sound_enabled?: boolean; // play subtle audio chime on reminder
+  notify_at_due_time?: boolean; // also notify at exact due time in addition to reminder lead time
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   google_token_expiry?: string | null;

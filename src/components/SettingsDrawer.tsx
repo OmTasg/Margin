@@ -16,8 +16,17 @@ import {
   Smartphone,
   Share,
   Download,
+  Bell,
+  Volume2,
+  Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  dispatchTestNotification,
+  NotificationPermissionStatus,
+} from "@/lib/notifications";
 
 interface Props {
   isOpen: boolean;
@@ -55,6 +64,54 @@ export function SettingsDrawer({
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermissionStatus>("default");
+  const [notificationFeedback, setNotificationFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setNotificationPermission(getNotificationPermission());
+    }
+  }, [isOpen]);
+
+  const handleEnableNotifications = async () => {
+    const res = await requestNotificationPermission();
+    setNotificationPermission(res);
+    if (res === "granted") {
+      onUpdateSettings({ notifications_enabled: true });
+      setNotificationFeedback({
+        type: "success",
+        message:
+          "Notifications enabled! You will now receive timely alerts before tasks are due.",
+      });
+    } else if (res === "denied") {
+      setNotificationFeedback({
+        type: "error",
+        message:
+          "Notifications are blocked in your browser. Click the lock/settings icon in your address bar to allow them.",
+      });
+    }
+  };
+
+  const handleTestNotification = async () => {
+    setNotificationFeedback(null);
+    const res = await dispatchTestNotification();
+    setNotificationPermission(res.permission);
+    if (res.success) {
+      setNotificationFeedback({
+        type: "success",
+        message: "Test notification and chime dispatched successfully!",
+      });
+    } else {
+      setNotificationFeedback({
+        type: "error",
+        message: res.error || "Failed to trigger notification.",
+      });
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -220,6 +277,109 @@ export function SettingsDrawer({
                 </button>
               </div>
             )}
+          </div>
+
+          <hr className="border-zinc-200/80 dark:border-zinc-800/80" />
+
+          {/* SECTION: Device Notifications & Audio Chimes */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 font-medium">
+                <Bell className="w-3.5 h-3.5 text-blue-500" />
+                <span>Device Notifications & Audio</span>
+              </div>
+
+              {notificationPermission === "granted" ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+                  Allowed ✅
+                </span>
+              ) : notificationPermission === "denied" ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400">
+                  Blocked 🚫
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                  Not Enabled
+                </span>
+              )}
+            </div>
+
+            <p className="text-zinc-400 leading-relaxed text-[11px]">
+              Receive native device notifications and chimes when assignments or habits are nearing their due time, even if Margin is in the background.
+            </p>
+
+            {/* Notification permission button / actions */}
+            <div className="flex items-center gap-2 pt-0.5">
+              {notificationPermission !== "granted" ? (
+                <button
+                  type="button"
+                  onClick={handleEnableNotifications}
+                  className="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>Enable Device Notifications</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleTestNotification}
+                  className="flex-1 py-1.5 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition border border-zinc-200 dark:border-zinc-700"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Send Test Notification & Chime</span>
+                </button>
+              )}
+            </div>
+
+            {notificationFeedback && (
+              <div
+                className={`p-2.5 rounded-lg border text-xs flex items-start gap-2 ${
+                  notificationFeedback.type === "success"
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300"
+                    : "bg-rose-50/50 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900 text-rose-800 dark:text-rose-300"
+                }`}
+              >
+                {notificationFeedback.type === "success" ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                )}
+                <span className="leading-tight">{notificationFeedback.message}</span>
+              </div>
+            )}
+
+            {/* Sub-options: Chime sound & Due-time alert */}
+            <div className="space-y-1.5 pt-1">
+              <label className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800/60 cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Audio chime on reminder</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.notification_sound_enabled !== false}
+                  onChange={(e) =>
+                    onUpdateSettings({ notification_sound_enabled: e.target.checked })
+                  }
+                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800/60 cursor-pointer">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Alert at exact due time</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.notify_at_due_time !== false}
+                  onChange={(e) =>
+                    onUpdateSettings({ notify_at_due_time: e.target.checked })
+                  }
+                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                />
+              </label>
+            </div>
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />

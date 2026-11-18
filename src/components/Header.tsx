@@ -10,8 +10,10 @@ import {
   Search,
   HelpCircle,
   BookOpen,
+  Bell,
 } from "lucide-react";
 import { UserSettings } from "@/lib/types";
+import { NotificationPermissionStatus } from "@/lib/notifications";
 
 interface Props {
   activeCount: number;
@@ -24,6 +26,7 @@ interface Props {
   onSearchChange: (q: string) => void;
   theme: "dark" | "light" | "system";
   onToggleTheme: () => void;
+  notificationPermission?: NotificationPermissionStatus;
 }
 
 export function Header({
@@ -37,6 +40,7 @@ export function Header({
   onSearchChange,
   theme,
   onToggleTheme,
+  notificationPermission,
 }: Props) {
   return (
     <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 safe-top transition-colors">
@@ -117,6 +121,29 @@ export function Header({
             className="hidden md:flex p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 rounded-lg transition"
           >
             <HelpCircle className="w-4 h-4" />
+          </button>
+
+          {/* Notifications Bell */}
+          <button
+            onClick={onOpenSettings}
+            aria-label="Notification & Reminder Settings"
+            title={
+              notificationPermission === "granted"
+                ? "Notifications active (click for settings)"
+                : "Enable Notifications & Reminders"
+            }
+            className="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 rounded-lg transition relative"
+          >
+            <Bell
+              className={`w-4 h-4 ${
+                notificationPermission === "granted"
+                  ? "text-blue-500 dark:text-blue-400"
+                  : "text-zinc-400"
+              }`}
+            />
+            {notificationPermission !== "granted" && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+            )}
           </button>
 
           {/* Settings */}
