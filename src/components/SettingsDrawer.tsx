@@ -19,8 +19,15 @@ import {
   Bell,
   Volume2,
   Sparkles,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
 import { format } from "date-fns";
+import {
+  isSupabaseConfigured,
+  getSupabaseConfigDetails,
+  setCustomSupabaseCredentials,
+} from "@/lib/supabase/client";
 import {
   getNotificationPermission,
   requestNotificationPermission,
@@ -41,6 +48,9 @@ interface Props {
   onBatchPushGCal: () => Promise<any>;
   theme: "dark" | "light" | "system";
   onSetTheme: (t: "dark" | "light" | "system") => void;
+  isCloudSyncing?: boolean;
+  cloudSyncError?: string | null;
+  onSyncCloud?: () => Promise<void> | void;
 }
 
 export function SettingsDrawer({
@@ -52,6 +62,9 @@ export function SettingsDrawer({
   onSyncCanvas,
   theme,
   onSetTheme,
+  isCloudSyncing,
+  cloudSyncError,
+  onSyncCloud,
 }: Props) {
   const [canvasUrlInput, setCanvasUrlInput] = useState(settings.canvas_ics_url || "");
   const [showCanvasHelp, setShowCanvasHelp] = useState(false);
@@ -70,6 +83,16 @@ export function SettingsDrawer({
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfigDetails());
+  const [customSupabaseUrl, setCustomSupabaseUrl] = useState("");
+  const [customSupabaseKey, setCustomSupabaseKey] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setSupabaseConfig(getSupabaseConfigDetails());
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -501,6 +524,141 @@ export function SettingsDrawer({
                 </p>
               </div>
             </label>
+          </div>
+
+          <hr className="border-zinc-200/80 dark:border-zinc-800/80" />
+
+          {/* SECTION: Cloud Sync & Cross-Device Sync (Supabase) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 font-medium">
+                <Cloud className="w-3.5 h-3.5 text-blue-500" />
+                <span>Cross-Device Sync (Phone & Laptop)</span>
+              </div>
+              {supabaseConfig.isConfigured ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
+                  Local Offline
+                </span>
+              )}
+            </div>
+
+            <p className="text-zinc-400 leading-relaxed text-xs">
+              Margin automatically syncs all tasks, categories, and calendar items in real time between your phone and laptop using Supabase.
+            </p>
+
+            {/* Status & Sync Now Card */}
+            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/80 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-zinc-600 dark:text-zinc-400 block font-medium">
+                    {supabaseConfig.isConfigured ? "Supabase Cloud" : "Sync Status"}
+                  </span>
+                  <span className="text-[11px] text-zinc-500 font-mono truncate max-w-[200px] block">
+                    {supabaseConfig.url || "No cloud credentials detected"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isCloudSyncing || !supabaseConfig.isConfigured}
+                  onClick={async () => {
+                    if (onSyncCloud) {
+                      await onSyncCloud();
+                      alert("Tasks synced successfully with cloud!");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 text-white dark:text-zinc-900 font-semibold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isCloudSyncing ? "animate-spin" : ""}`} />
+                  <span>{isCloudSyncing ? "Syncing..." : "Sync Now"}</span>
+                </button>
+              </div>
+
+              {cloudSyncError && (
+                <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-[11px] text-rose-700 dark:text-rose-300">
+                  Sync error: {cloudSyncError}
+                </div>
+              )}
+
+              {/* Manual setup if not configured via env vars */}
+              {!supabaseConfig.isConfigured && (
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 space-y-2">
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                    💡 If running locally on your laptop, paste your Supabase URL & Anon Key to connect:
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="https://xyz.supabase.co"
+                    value={customSupabaseUrl}
+                    onChange={(e) => setCustomSupabaseUrl(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                  <input
+                    type="password"
+                    placeholder="anon public key (eyJhbGci...)"
+                    value={customSupabaseKey}
+                    onChange={(e) => setCustomSupabaseKey(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customSupabaseUrl.trim() && customSupabaseKey.trim()) {
+                        setCustomSupabaseCredentials(customSupabaseUrl, customSupabaseKey);
+                        window.location.reload();
+                      }
+                    }}
+                    className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition"
+                  >
+                    Save & Connect Supabase
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Migration SQL copy for user */}
+            <div className="pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const sql = `-- Run this once in your Supabase SQL Editor if your remote database was created previously:
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Add modern columns to tasks table
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'personal';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_lecture_or_meeting BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS canvas_uid TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence JSONB;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurring_parent_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS google_event_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS google_calendar_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_pushed_to_google BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Ensure Realtime broadcast is enabled on tasks table
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_publication_tables 
+            WHERE pubname = 'supabase_realtime' AND tablename = 'tasks'
+        ) THEN
+            ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
+        END IF;
+    END IF;
+END $$;`;
+                  navigator.clipboard.writeText(sql);
+                  alert("Supabase SQL migration snippet copied to clipboard! Paste it into your Supabase SQL Editor if your remote table needs column updates.");
+                }}
+                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-medium"
+              >
+                <span>📋 Copy Supabase SQL Migration (Fix schema / realtime)</span>
+              </button>
+            </div>
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />

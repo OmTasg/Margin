@@ -11,9 +11,12 @@ import {
   HelpCircle,
   BookOpen,
   Bell,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
 import { UserSettings } from "@/lib/types";
 import { NotificationPermissionStatus } from "@/lib/notifications";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 interface Props {
   activeCount: number;
@@ -27,6 +30,8 @@ interface Props {
   theme: "dark" | "light" | "system";
   onToggleTheme: () => void;
   notificationPermission?: NotificationPermissionStatus;
+  isCloudSyncing?: boolean;
+  onSyncCloud?: () => void;
 }
 
 export function Header({
@@ -41,6 +46,8 @@ export function Header({
   theme,
   onToggleTheme,
   notificationPermission,
+  isCloudSyncing,
+  onSyncCloud,
 }: Props) {
   return (
     <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 safe-top transition-colors">
@@ -86,6 +93,34 @@ export function Header({
 
         {/* Action Buttons: Minimal, clean, quiet */}
         <div className="flex items-center gap-1">
+          {/* Cloud Cross-Device Sync Status Button */}
+          <button
+            onClick={() => {
+              if (isSupabaseConfigured() && onSyncCloud) {
+                onSyncCloud();
+              } else {
+                onOpenSettings();
+              }
+            }}
+            disabled={isCloudSyncing}
+            title={
+              isCloudSyncing
+                ? "Syncing tasks with cloud..."
+                : isSupabaseConfigured()
+                ? "Cloud Sync Active (Click to sync now)"
+                : "Cloud Sync Offline (Local only - Click to connect in Settings)"
+            }
+            className="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 rounded-lg transition"
+          >
+            {isCloudSyncing ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
+            ) : isSupabaseConfigured() ? (
+              <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <CloudOff className="w-4 h-4 text-zinc-400 hover:text-amber-500" />
+            )}
+          </button>
+
           {/* Quick Canvas Sync */}
           {settings.canvas_ics_url && (
             <button

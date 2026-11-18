@@ -53,6 +53,9 @@ export default function Home() {
     setSortBy,
     availableCourses,
     groupedTasks,
+    isCloudSyncing,
+    cloudSyncError,
+    syncCloudTasks,
     addTask,
     updateTask,
     toggleTaskComplete,
@@ -240,6 +243,8 @@ export default function Home() {
         theme={theme}
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         notificationPermission={notificationPermission}
+        isCloudSyncing={isCloudSyncing}
+        onSyncCloud={syncCloudTasks}
       />
 
       {/* Main Responsive Canvas: Wide on laptop/desktop, comfortable padding, elevated surface card */}
@@ -411,6 +416,9 @@ export default function Home() {
         }}
         theme={theme}
         onSetTheme={setTheme}
+        isCloudSyncing={isCloudSyncing}
+        cloudSyncError={cloudSyncError}
+        onSyncCloud={syncCloudTasks}
       />
 
       {/* Keyboard Shortcuts Modal */}

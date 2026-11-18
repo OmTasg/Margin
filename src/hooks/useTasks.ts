@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Task, UserSettings, Priority, TaskSource, SortOption, TaskCategory } from "@/lib/types";
 import { getLocalTasks, saveLocalTasks } from "@/lib/storage/localStore";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
+import {
+  pushTaskToCloud,
+  pushTasksBatchToCloud,
+  deleteTaskFromCloud,
+  syncTwoWayTasks,
+} from "@/lib/storage/supabaseStore";
 import {
   resolveDirectCanvasUrl,
   calculateCanvasPriority,
@@ -17,6 +23,15 @@ import { isToday, isTomorrow, isPast, startOfDay } from "date-fns";
 export function useTasks(settings: UserSettings) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<Date | null>(null);
+  const tasksRef = useRef<Task[]>(tasks);
+
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
   const [sourceFilter, setSourceFilter] = useState<TaskSource | "all">("all");
@@ -96,6 +111,28 @@ export function useTasks(settings: UserSettings) {
     return { cleaned, prunedIds };
   }, []);
 
+  // Manual / auto cloud sync function
+  const syncCloudTasks = useCallback(async () => {
+    if (!isSupabaseConfigured()) return;
+    setIsCloudSyncing(true);
+    setCloudSyncError(null);
+    try {
+      const res = await syncTwoWayTasks(tasksRef.current);
+      if (res.success && res.tasks) {
+        const { cleaned } = sanitizeAndPruneTasks(res.tasks);
+        setTasks(cleaned);
+        saveLocalTasks(cleaned);
+        setLastCloudSyncAt(new Date());
+      } else if (res.error) {
+        setCloudSyncError(res.error);
+      }
+    } catch (err: any) {
+      setCloudSyncError(err?.message || String(err));
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  }, [sanitizeAndPruneTasks]);
+
   // Load tasks on mount & listen to Supabase Realtime if configured
   useEffect(() => {
     const rawLocal = getLocalTasks();
@@ -113,28 +150,19 @@ export function useTasks(settings: UserSettings) {
           supabase.from("tasks").delete().in("id", localPruned).then();
         }
 
-        // 1. Fetch remote tasks
-        supabase
-          .from("tasks")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .then(({ data, error }) => {
-            if (!error && data) {
-              const { cleaned: remoteCleaned, prunedIds: remotePruned } = sanitizeAndPruneTasks(data as Task[]);
-              
-              if (remotePruned.length > 0) {
-                supabase.from("tasks").delete().in("id", remotePruned).then();
-              }
-
-              if (remoteCleaned.length > 0) {
-                setTasks(remoteCleaned);
-                saveLocalTasks(remoteCleaned);
-              } else if (loaded.length > 0) {
-                // Upload local tasks to cloud
-                supabase.from("tasks").insert(loaded).then();
-              }
-            }
-          });
+        // 1. Two-way intelligent merge on load
+        setIsCloudSyncing(true);
+        syncTwoWayTasks(loaded).then((res) => {
+          if (res.success && res.tasks) {
+            const { cleaned: remoteCleaned } = sanitizeAndPruneTasks(res.tasks);
+            setTasks(remoteCleaned);
+            saveLocalTasks(remoteCleaned);
+            setLastCloudSyncAt(new Date());
+          } else if (res.error) {
+            setCloudSyncError(res.error);
+          }
+          setIsCloudSyncing(false);
+        });
 
         // 2. Realtime cross-device sync channel
         const channel = supabase
@@ -194,7 +222,9 @@ export function useTasks(settings: UserSettings) {
               }
             }
           )
-          .subscribe();
+          .subscribe((status) => {
+            console.log("[Supabase Realtime Channel Status]:", status);
+          });
 
         return () => {
           supabase.removeChannel(channel);
@@ -204,6 +234,21 @@ export function useTasks(settings: UserSettings) {
       }
     }
   }, [sanitizeAndPruneTasks]);
+
+  // Auto-sync when phone wakes up or user switches back to Margin tab
+  useEffect(() => {
+    const handleSyncOnVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        syncCloudTasks();
+      }
+    };
+    window.addEventListener("focus", handleSyncOnVisible);
+    document.addEventListener("visibilitychange", handleSyncOnVisible);
+    return () => {
+      window.removeEventListener("focus", handleSyncOnVisible);
+      document.removeEventListener("visibilitychange", handleSyncOnVisible);
+    };
+  }, [syncCloudTasks]);
 
   // Sync to local storage
   const commitTasks = useCallback((newTasks: Task[]) => {
@@ -293,6 +338,8 @@ export function useTasks(settings: UserSettings) {
         external_url: taskData.external_url || null,
         course_name: finalCourse,
         canvas_uid: taskData.canvas_uid || null,
+        recurrence: taskData.recurrence || null,
+        recurring_parent_id: taskData.recurring_parent_id || null,
         is_pushed_to_google: false,
         created_at: nowIso,
         updated_at: nowIso,
@@ -302,9 +349,13 @@ export function useTasks(settings: UserSettings) {
       const updatedList = [newTask, ...tasks];
       commitTasks(updatedList);
 
-      // Cloud sync if Supabase configured
+      // Cloud sync with resilient schema fallback
       if (isSupabaseConfigured()) {
-        createClient().from("tasks").insert([newTask]).then();
+        pushTaskToCloud(newTask).then((res) => {
+          if (!res.success && res.error) {
+            console.warn("[Cloud Sync] Failed to push new task:", res.error);
+          }
+        });
       }
 
       // Auto-push to Google if enabled
@@ -337,9 +388,13 @@ export function useTasks(settings: UserSettings) {
         return next;
       });
 
-      // Cloud sync if Supabase configured
+      // Cloud sync with resilient schema fallback
       if (isSupabaseConfigured()) {
-        createClient().from("tasks").update(updates).eq("id", taskId).then();
+        pushTaskToCloud(updatedTask).then((res) => {
+          if (!res.success && res.error) {
+            console.warn("[Cloud Sync] Failed to update task:", res.error);
+          }
+        });
       }
 
       // If task is pushed to Google or auto-push is enabled and date/reminder/title changed, sync to GCal
@@ -358,27 +413,28 @@ export function useTasks(settings: UserSettings) {
   // Toggle complete
   const toggleTaskComplete = useCallback(
     (taskId: string) => {
-      let isCompletedAfterToggle = false;
       let nextRecurringTask: Task | null = null;
+      let completedTask: Task | null = null;
 
       setTasks((prev) => {
         let spawnedTask: Task | null = null;
         const next = prev.map((t) => {
           if (t.id === taskId) {
             const isNowCompleted = !t.is_completed;
-            isCompletedAfterToggle = isNowCompleted;
 
             // If completing a recurring task, calculate next occurrence
             if (isNowCompleted && t.recurrence && t.recurrence.frequency !== "none") {
               spawnedTask = calculateNextTaskOccurrence(t);
             }
 
-            return {
+            const updated: Task = {
               ...t,
               is_completed: isNowCompleted,
               completed_at: isNowCompleted ? new Date().toISOString() : null,
               updated_at: new Date().toISOString(),
             };
+            completedTask = updated;
+            return updated;
           }
           return t;
         });
@@ -395,18 +451,11 @@ export function useTasks(settings: UserSettings) {
       });
 
       if (isSupabaseConfigured()) {
-        const client = createClient();
-        client
-          .from("tasks")
-          .update({
-            is_completed: isCompletedAfterToggle,
-            completed_at: isCompletedAfterToggle ? new Date().toISOString() : null,
-          })
-          .eq("id", taskId)
-          .then();
-
+        if (completedTask) {
+          pushTaskToCloud(completedTask);
+        }
         if (nextRecurringTask) {
-          client.from("tasks").insert(nextRecurringTask).then();
+          pushTaskToCloud(nextRecurringTask);
         }
       }
     },
@@ -420,7 +469,7 @@ export function useTasks(settings: UserSettings) {
 
       // Cloud delete
       if (isSupabaseConfigured()) {
-        createClient().from("tasks").delete().eq("id", taskId).then();
+        deleteTaskFromCloud(taskId);
       }
 
       // Delete from Google Calendar if event exists
@@ -475,7 +524,7 @@ export function useTasks(settings: UserSettings) {
         if (prunedIds.length > 0) {
           supabase.from("tasks").delete().in("id", prunedIds).then();
         }
-        supabase.from("tasks").upsert(cleaned).then();
+        pushTasksBatchToCloud(cleaned);
       }
 
       // If auto-push is enabled, push newly imported unpushed tasks
@@ -655,6 +704,10 @@ export function useTasks(settings: UserSettings) {
     setSortBy,
     availableCourses,
     groupedTasks,
+    isCloudSyncing,
+    cloudSyncError,
+    lastCloudSyncAt,
+    syncCloudTasks,
     addTask,
     updateTask,
     toggleTaskComplete,

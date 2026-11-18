@@ -100,3 +100,17 @@ CREATE POLICY "Users can manage their own settings"
     ON public.user_settings
     FOR ALL
     USING (auth.uid() = user_id OR auth.uid() IS NULL);
+
+-- 7. Realtime Replication Publication
+-- Ensures INSERT, UPDATE, and DELETE changes broadcast to phone and laptop instantly
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_publication_tables 
+            WHERE pubname = 'supabase_realtime' AND tablename = 'tasks'
+        ) THEN
+            ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
+        END IF;
+    END IF;
+END $$;
