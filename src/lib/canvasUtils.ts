@@ -1,4 +1,141 @@
-import { Priority } from "./types";
+import { Priority, TaskCategory } from "./types";
+
+export const CATEGORY_CONFIG: Record<
+  TaskCategory,
+  { label: string; icon: string; color: string; badgeClass: string }
+> = {
+  course: {
+    label: "Course",
+    icon: "📚",
+    color: "#3b82f6",
+    badgeClass: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-900/40",
+  },
+  gym: {
+    label: "Gym & Fitness",
+    icon: "🏋️",
+    color: "#f97316",
+    badgeClass: "bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200/60 dark:border-orange-900/40",
+  },
+  shopping: {
+    label: "Shopping",
+    icon: "🛒",
+    color: "#10b981",
+    badgeClass: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/40",
+  },
+  laundry: {
+    label: "Laundry & Chores",
+    icon: "🧺",
+    color: "#8b5cf6",
+    badgeClass: "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/60 dark:border-purple-900/40",
+  },
+  cooking: {
+    label: "Cooking & Food",
+    icon: "🍳",
+    color: "#ec4899",
+    badgeClass: "bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200/60 dark:border-pink-900/40",
+  },
+  personal: {
+    label: "Personal",
+    icon: "💡",
+    color: "#64748b",
+    badgeClass: "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700",
+  },
+};
+
+/**
+ * Automatically infers task category based on title, course name, or notes
+ */
+export function inferTaskCategory(title: string, courseName?: string | null): TaskCategory {
+  if (courseName && courseName.trim()) return "course";
+  const lower = title.toLowerCase();
+
+  if (/\b(gym|workout|lift|lifting|cardio|run|running|legs?|chest|fitness|push|pull|squat|bench)\b/.test(lower)) {
+    return "gym";
+  }
+  if (/\b(shop|shopping|groceries|grocery|buy|target|costco|trader joe|walmart|store|market|order)\b/.test(lower)) {
+    return "shopping";
+  }
+  if (/\b(laundry|wash clothes|clean|cleaning|vacuum|dishes|trash|chores?|mop)\b/.test(lower)) {
+    return "laundry";
+  }
+  if (/\b(cook|cooking|meal prep|dinner|lunch|breakfast|food|bake|baking|recipe|eat|groceries)\b/.test(lower)) {
+    return "cooking";
+  }
+  return "personal";
+}
+
+/**
+ * Detects whether a Canvas calendar event is actually a virtual lecture / Zoom meeting
+ * rather than an assignment or to-do.
+ */
+export function isLectureOrMeeting(task: {
+  title?: string;
+  notes?: string;
+  course_name?: string | null;
+  canvas_uid?: string | null;
+  external_url?: string | null;
+}): boolean {
+  const notes = (task.notes || "").toLowerCase();
+  const title = (task.title || "").toLowerCase();
+  const course = (task.course_name || "").toLowerCase();
+  const uid = (task.canvas_uid || "").toLowerCase();
+  const url = (task.external_url || "").toLowerCase();
+
+  // 1. Explicit Zoom, Teams, Webex, Google Meet links
+  if (
+    notes.includes("zoom.us") ||
+    notes.includes("join zoom meeting") ||
+    notes.includes("zoom online meeting") ||
+    notes.includes("teams.microsoft.com") ||
+    notes.includes("webex.com") ||
+    notes.includes("meet.google.com")
+  ) {
+    return true;
+  }
+
+  // 2. Canvas Calendar Event rather than assignment/quiz
+  if (uid.includes("event-calendar-event") || url.includes("#calendar_event_")) {
+    return true;
+  }
+
+  // 3. Keywords indicating lecture / recurring class meeting
+  const lectureKeywords = [
+    /\blecture\b/i,
+    /\bvirtual\s+(fa|sp|su|fall|spring|summer)\b/i,
+    /\bclass\s+meeting\b/i,
+    /\boffice\s+hours\b/i,
+    /\brecitation\b/i,
+    /\bdiscussion\s+section\b/i,
+  ];
+
+  const assignmentKeywords = [
+    /\bhomework\b/i,
+    /\bhw\b/i,
+    /\bquiz\b/i,
+    /\bexam\b/i,
+    /\bmidterm\b/i,
+    /\bfinal\b/i,
+    /\bpset\b/i,
+    /\bproblem set\b/i,
+    /\bassignment\b/i,
+    /\bproject\b/i,
+    /\bessay\b/i,
+    /\blab\b/i,
+    /\bpaper\b/i,
+    /\breading\b/i,
+    /\bdue\b/i,
+    /\bsubmit\b/i,
+  ];
+
+  const hasAssignmentKeyword = assignmentKeywords.some((p) => p.test(title));
+  if (!hasAssignmentKeyword) {
+    if (lectureKeywords.some((p) => p.test(title) || p.test(course) || p.test(notes))) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 export function parseCanvasSummary(summary: string): { title: string; courseName: string | null } {
   let title = (summary || "").trim();

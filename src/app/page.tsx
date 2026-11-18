@@ -37,8 +37,16 @@ export default function Home() {
     togglePriorityFilter,
     sourceFilter,
     setSourceFilter,
-    courseFilter,
-    setCourseFilter,
+    selectedCourses,
+    setSelectedCourses,
+    toggleCourseFilter,
+    clearCourseFilters,
+    selectAllCourses,
+    selectedCategory,
+    setSelectedCategory,
+    hideVirtualClasses,
+    setHideVirtualClasses,
+    toggleHideVirtualClasses,
     sortBy,
     setSortBy,
     availableCourses,
@@ -229,7 +237,7 @@ export default function Home() {
             }}
           />
 
-          {/* Filter Bar (Multi-Select Priorities, Course, Source, Sort) - hidden in Calendar View for clean layout */}
+          {/* Filter Bar (Multi-Select Classes, Categories, Hide Zoom Lectures, Priorities, Sort) */}
           {currentView !== "calendar" && (
             <FilterBar
               selectedPriorities={selectedPriorities}
@@ -237,9 +245,15 @@ export default function Home() {
               onClearPriorities={() => setSelectedPriorities([])}
               sourceFilter={sourceFilter}
               onSourceChange={setSourceFilter}
-              courseFilter={courseFilter}
-              onCourseChange={setCourseFilter}
+              selectedCourses={selectedCourses}
+              onToggleCourse={toggleCourseFilter}
+              onClearCourses={clearCourseFilters}
+              onSelectAllCourses={selectAllCourses}
               availableCourses={availableCourses}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              hideVirtualClasses={hideVirtualClasses}
+              onToggleHideVirtualClasses={toggleHideVirtualClasses}
               sortBy={sortBy}
               onSortChange={setSortBy}
               showSort={currentView !== "completed"}

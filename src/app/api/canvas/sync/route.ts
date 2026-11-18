@@ -4,6 +4,7 @@ import {
   calculateCanvasPriority,
   isMoreThanTwoDaysOverdue,
   resolveDirectCanvasUrl,
+  isLectureOrMeeting,
 } from "@/lib/canvasUtils";
 import { Task, UserSettings } from "@/lib/types";
 
@@ -99,6 +100,9 @@ export async function POST(req: NextRequest) {
       // Auto-prioritize based on due date
       const autoPriority = calculateCanvasPriority(event.due_date);
 
+      // Check if event is a virtual lecture / class meeting
+      const isMeeting = isLectureOrMeeting(event);
+
       const existing = existingMap.get(event.canvas_uid);
 
       if (existing) {
@@ -115,6 +119,7 @@ export async function POST(req: NextRequest) {
         const titleChanged = existing.title !== event.title;
         const notesChanged = existing.notes !== event.notes;
         const urlChanged = existing.external_url !== bestUrl;
+        const meetingChanged = existing.is_lecture_or_meeting !== isMeeting;
         const priorityNeedsUpdate =
           !existing.is_completed && existing.priority !== autoPriority;
 
@@ -123,6 +128,7 @@ export async function POST(req: NextRequest) {
           titleChanged ||
           notesChanged ||
           urlChanged ||
+          meetingChanged ||
           priorityNeedsUpdate
         ) {
           const index = resultTasks.findIndex((t) => t.id === existing.id);
@@ -134,6 +140,8 @@ export async function POST(req: NextRequest) {
               priority: autoPriority,
               notes: event.notes || resultTasks[index].notes,
               course_name: event.course_name || resultTasks[index].course_name,
+              category: "course",
+              is_lecture_or_meeting: isMeeting,
               external_url: bestUrl,
               updated_at: nowIso,
             };
@@ -151,6 +159,8 @@ export async function POST(req: NextRequest) {
           is_completed: false,
           reminder_lead_time_minutes: defaultReminderMinutes,
           source: "canvas",
+          category: "course",
+          is_lecture_or_meeting: isMeeting,
           external_url: directUrl,
           course_name: event.course_name,
           canvas_uid: event.canvas_uid,

@@ -9,10 +9,16 @@ import {
   Edit2,
   Clock,
 } from "lucide-react";
-import { Task, UserSettings } from "@/lib/types";
+import { Task, UserSettings, TaskCategory } from "@/lib/types";
 import { format, isToday, isTomorrow, isPast } from "date-fns";
 import { generateGoogleCalendarUrl } from "@/lib/google/calendarUrl";
-import { resolveDirectCanvasUrl } from "@/lib/canvasUtils";
+import {
+  resolveDirectCanvasUrl,
+  CATEGORY_CONFIG,
+  inferTaskCategory,
+  isLectureOrMeeting,
+} from "@/lib/canvasUtils";
+import { Video } from "lucide-react";
 
 interface Props {
   task: Task;
@@ -53,6 +59,13 @@ export function TaskCard({
 
   const dueInfo = formatDueDisplay(task.due_date);
   const directCanvasUrl = resolveDirectCanvasUrl(task.external_url, task.notes, task.canvas_uid) || task.external_url;
+  const isMeeting = task.is_lecture_or_meeting || isLectureOrMeeting(task);
+  const category = (task.category || inferTaskCategory(task.title, task.course_name)) as TaskCategory;
+  const categoryConfig = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.personal;
+
+  // Extract Zoom URL if present in notes
+  const zoomMatch = task.notes ? task.notes.match(/(https?:\/\/[^\s<>"'\\]*zoom\.us\/[^\s<>"'\\]*)/i) : null;
+  const zoomUrl = zoomMatch ? zoomMatch[1] : null;
 
   // Priority indicator: colored checkbox border (Things 3 style)
   const priorityCheckboxBorder = {
@@ -89,10 +102,37 @@ export function TaskCard({
   // Build clean inline metadata items separated by middle dots (·)
   const metaItems: React.ReactNode[] = [];
 
-  if (task.course_name) {
+  // 1. Category / Course Tag
+  if (category !== "course") {
     metaItems.push(
-      <span key="course" className="font-medium text-zinc-700 dark:text-zinc-300">
-        {task.course_name}
+      <span
+        key="cat"
+        className={`inline-flex items-center gap-1 font-semibold text-[10px] px-1.5 py-0.5 rounded-md border ${categoryConfig.badgeClass}`}
+      >
+        <span>{categoryConfig.icon}</span>
+        <span>{categoryConfig.label}</span>
+      </span>
+    );
+  } else if (task.course_name) {
+    metaItems.push(
+      <span
+        key="course"
+        className="font-semibold text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40"
+      >
+        📚 {task.course_name}
+      </span>
+    );
+  }
+
+  // 2. Virtual Lecture / Class Meeting indicator
+  if (isMeeting) {
+    metaItems.push(
+      <span
+        key="meeting"
+        className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40"
+      >
+        <Video className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+        <span>Virtual Class</span>
       </span>
     );
   }
@@ -183,6 +223,21 @@ export function TaskCard({
             >
               {task.title}
             </h3>
+          )}
+
+          {/* Quick Zoom meeting link if present */}
+          {zoomUrl && (
+            <a
+              href={zoomUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 px-1.5 py-0.5 rounded shrink-0 ml-1"
+            >
+              <Video className="w-3 h-3 text-blue-500" />
+              <span>Join Zoom</span>
+              <ArrowUpRight className="w-2.5 h-2.5 opacity-60" />
+            </a>
           )}
         </div>
 

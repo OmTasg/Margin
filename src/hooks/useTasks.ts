@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Task, UserSettings, Priority, TaskSource, SortOption } from "@/lib/types";
+import { Task, UserSettings, Priority, TaskSource, SortOption, TaskCategory } from "@/lib/types";
 import { getLocalTasks, saveLocalTasks } from "@/lib/storage/localStore";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
 import {
   resolveDirectCanvasUrl,
   calculateCanvasPriority,
   isMoreThanTwoDaysOverdue,
+  isLectureOrMeeting,
+  inferTaskCategory,
 } from "@/lib/canvasUtils";
 import { isToday, isTomorrow, isPast, startOfDay } from "date-fns";
 
@@ -17,7 +19,9 @@ export function useTasks(settings: UserSettings) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([]);
   const [sourceFilter, setSourceFilter] = useState<TaskSource | "all">("all");
-  const [courseFilter, setCourseFilter] = useState<string | "all">("all");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<TaskCategory | "all">("all");
+  const [hideVirtualClasses, setHideVirtualClasses] = useState<boolean>(true);
   const [sortBy, setSortBy] = useState<SortOption>("dueDate");
 
   const togglePriorityFilter = useCallback((p: Priority) => {
@@ -28,6 +32,24 @@ export function useTasks(settings: UserSettings) {
         return [...prev, p];
       }
     });
+  }, []);
+
+  const toggleCourseFilter = useCallback((course: string) => {
+    setSelectedCourses((prev) =>
+      prev.includes(course) ? prev.filter((c) => c !== course) : [...prev, course]
+    );
+  }, []);
+
+  const clearCourseFilters = useCallback(() => {
+    setSelectedCourses([]);
+  }, []);
+
+  const selectAllCourses = useCallback((courses: string[]) => {
+    setSelectedCourses(courses);
+  }, []);
+
+  const toggleHideVirtualClasses = useCallback(() => {
+    setHideVirtualClasses((prev) => !prev);
   }, []);
 
   // Helper to sanitize Canvas URLs, auto-prioritize, and auto-delete >2 days overdue tasks
@@ -57,9 +79,15 @@ export function useTasks(settings: UserSettings) {
         priority = calculateCanvasPriority(t.due_date);
       }
 
+      // 5. Detect meeting / lecture and category
+      const isMeeting = t.is_lecture_or_meeting ?? isLectureOrMeeting(t);
+      const category = t.category || inferTaskCategory(t.title, t.course_name);
+
       cleaned.push({
         ...t,
         priority,
+        category,
+        is_lecture_or_meeting: isMeeting,
         external_url: directUrl || t.external_url,
       });
     }
@@ -240,6 +268,15 @@ export function useTasks(settings: UserSettings) {
           ? taskData.reminder_lead_time_minutes
           : settings.default_reminder_lead_time_minutes;
 
+      const finalCourse = taskData.course_name ? taskData.course_name.toUpperCase() : null;
+      const finalCategory =
+        taskData.category || inferTaskCategory(taskData.title?.trim() || "", finalCourse);
+      const isMeeting = isLectureOrMeeting({
+        title: taskData.title,
+        notes: taskData.notes,
+        course_name: finalCourse,
+      });
+
       const newTask: Task = {
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         title: taskData.title?.trim() || "Untitled Task",
@@ -250,8 +287,10 @@ export function useTasks(settings: UserSettings) {
         reminder_lead_time_minutes: reminderLeadTime,
         estimated_duration_minutes: taskData.estimated_duration_minutes || null,
         source: taskData.source || "manual",
+        category: finalCategory,
+        is_lecture_or_meeting: isMeeting,
         external_url: taskData.external_url || null,
-        course_name: taskData.course_name ? taskData.course_name.toUpperCase() : null,
+        course_name: finalCourse,
         canvas_uid: taskData.canvas_uid || null,
         is_pushed_to_google: false,
         created_at: nowIso,
@@ -438,7 +477,7 @@ export function useTasks(settings: UserSettings) {
   // Filtered & Sorted Tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      // Search
+      // 1. Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchTitle = task.title.toLowerCase().includes(q);
@@ -447,24 +486,47 @@ export function useTasks(settings: UserSettings) {
         if (!matchTitle && !matchNotes && !matchCourse) return false;
       }
 
-      // Priority Multi-Select
+      // 2. Hide virtual classes / Zoom lectures if toggle is active
+      if (hideVirtualClasses && (task.is_lecture_or_meeting || isLectureOrMeeting(task))) {
+        return false;
+      }
+
+      // 3. Priority Multi-Select
       if (selectedPriorities.length > 0 && !selectedPriorities.includes(task.priority)) {
         return false;
       }
 
-      // Source
+      // 4. Source filter
       if (sourceFilter !== "all" && task.source !== sourceFilter) {
         return false;
       }
 
-      // Course
-      if (courseFilter !== "all" && task.course_name !== courseFilter) {
-        return false;
+      // 5. Course Multi-Select filter
+      if (selectedCourses.length > 0) {
+        if (!task.course_name || !selectedCourses.includes(task.course_name)) {
+          return false;
+        }
+      }
+
+      // 6. Category filter
+      if (selectedCategory !== "all") {
+        const cat = task.category || inferTaskCategory(task.title, task.course_name);
+        if (cat !== selectedCategory) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [tasks, searchQuery, selectedPriorities, sourceFilter, courseFilter]);
+  }, [
+    tasks,
+    searchQuery,
+    hideVirtualClasses,
+    selectedPriorities,
+    sourceFilter,
+    selectedCourses,
+    selectedCategory,
+  ]);
 
   // Grouped active tasks
   const groupedTasks = useMemo(() => {
@@ -556,8 +618,16 @@ export function useTasks(settings: UserSettings) {
     togglePriorityFilter,
     sourceFilter,
     setSourceFilter,
-    courseFilter,
-    setCourseFilter,
+    selectedCourses,
+    setSelectedCourses,
+    toggleCourseFilter,
+    clearCourseFilters,
+    selectAllCourses,
+    selectedCategory,
+    setSelectedCategory,
+    hideVirtualClasses,
+    setHideVirtualClasses,
+    toggleHideVirtualClasses,
     sortBy,
     setSortBy,
     availableCourses,

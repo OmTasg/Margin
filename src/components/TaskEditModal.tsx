@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Task, Priority, UserSettings } from "@/lib/types";
+import { Task, Priority, UserSettings, TaskCategory } from "@/lib/types";
+import { CATEGORY_CONFIG, inferTaskCategory } from "@/lib/canvasUtils";
 import {
   X,
   Calendar,
@@ -33,6 +34,7 @@ export function TaskEditModal({
 }: Props) {
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState<TaskCategory>("course");
   const [priority, setPriority] = useState<Priority>("P2");
   const [dueDateStr, setDueDateStr] = useState("");
   const [reminderMinutes, setReminderMinutes] = useState(15);
@@ -45,6 +47,7 @@ export function TaskEditModal({
     if (task) {
       setTitle(task.title || "");
       setNotes(task.notes || "");
+      setCategory((task.category || inferTaskCategory(task.title, task.course_name)) as TaskCategory);
       setPriority(task.priority || "P2");
       setCourseName(task.course_name || "");
       setExternalUrl(task.external_url || "");
@@ -87,6 +90,7 @@ export function TaskEditModal({
       await onSave(task.id, {
         title: title.trim(),
         notes: notes.trim() || undefined,
+        category,
         priority,
         due_date: finalDueDate,
         reminder_lead_time_minutes: reminderMinutes,
@@ -158,6 +162,36 @@ export function TaskEditModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+          {/* Category Chips */}
+          <div>
+            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Category
+            </label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["course", "gym", "shopping", "laundry", "cooking", "personal"] as TaskCategory[]).map(
+                (catKey) => {
+                  const cfg = CATEGORY_CONFIG[catKey];
+                  const isSelected = category === catKey;
+                  return (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => setCategory(catKey)}
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1 transition ${
+                        isSelected
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-sm"
+                          : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                      }`}
+                    >
+                      <span>{cfg.icon}</span>
+                      <span>{cfg.label}</span>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
           {/* Title */}
           <div>
             <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">

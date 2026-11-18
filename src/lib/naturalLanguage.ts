@@ -1,4 +1,5 @@
-import { Priority } from "./types";
+import { Priority, TaskCategory } from "./types";
+import { inferTaskCategory } from "./canvasUtils";
 import { addDays, setHours, setMinutes, nextDay, Day } from "date-fns";
 
 export interface ParsedTaskInput {
@@ -6,6 +7,7 @@ export interface ParsedTaskInput {
   priority?: Priority;
   dueDate?: Date | null;
   courseName?: string;
+  category?: TaskCategory;
   estimatedDurationMinutes?: number | null;
 }
 
@@ -154,6 +156,7 @@ export function parseNaturalLanguageTask(input: string): ParsedTaskInput {
     priority,
     dueDate,
     courseName,
+    category: inferTaskCategory(title, courseName),
     estimatedDurationMinutes,
   };
 }

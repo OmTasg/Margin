@@ -11,8 +11,9 @@ import {
   Sparkles,
   Check,
 } from "lucide-react";
-import { Priority, Task, UserSettings } from "@/lib/types";
-import { addDays, format, nextMonday, nextFriday, isFriday, isMonday } from "date-fns";
+import { Priority, Task, UserSettings, TaskCategory } from "@/lib/types";
+import { CATEGORY_CONFIG, inferTaskCategory } from "@/lib/canvasUtils";
+import { addDays, format, nextMonday, nextFriday } from "date-fns";
 
 interface Props {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export function NewTaskModal({
 
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [category, setCategory] = useState<TaskCategory>("course");
   const [priority, setPriority] = useState<Priority>("P2");
   const [courseName, setCourseName] = useState("");
   const [customCourse, setCustomCourse] = useState("");
@@ -76,6 +78,7 @@ export function NewTaskModal({
       // Reset form
       setTitle("");
       setNotes("");
+      setCategory(availableCourses.length > 0 ? "course" : "personal");
       setPriority("P2");
       setSelectedDateMode("today");
       setCustomDate("");
@@ -142,11 +145,12 @@ export function NewTaskModal({
       await onAddTask({
         title: title.trim(),
         notes: notes.trim() || undefined,
+        category,
         priority,
         due_date: dueDateIso,
         reminder_lead_time_minutes: reminderMinutes,
         estimated_duration_minutes: durationMinutes,
-        course_name: finalCourse ? finalCourse.toUpperCase() : null,
+        course_name: category === "course" && finalCourse ? finalCourse.toUpperCase() : null,
         source: "manual",
       });
 
@@ -196,6 +200,42 @@ export function NewTaskModal({
 
         {/* Task Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Category Quick Chips */}
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
+              Task Type
+            </label>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              {(["course", "gym", "shopping", "laundry", "cooking", "personal"] as TaskCategory[]).map(
+                (catKey) => {
+                  const cfg = CATEGORY_CONFIG[catKey];
+                  const isSelected = category === catKey;
+                  return (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => {
+                        setCategory(catKey);
+                        if (catKey !== "course") {
+                          setCourseName("");
+                          setIsAddingNewCourse(false);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl font-medium border flex items-center gap-1.5 transition ${
+                        isSelected
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-sm"
+                          : "bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+                      }`}
+                    >
+                      <span>{cfg.icon}</span>
+                      <span>{cfg.label}</span>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
           {/* Title */}
           <div>
             <input
@@ -204,7 +244,19 @@ export function NewTaskModal({
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to get done?"
+              placeholder={
+                category === "gym"
+                  ? "e.g. Leg day / 45m workout / Run 3 miles"
+                  : category === "shopping"
+                  ? "e.g. Grocery run (eggs, milk, chicken)"
+                  : category === "laundry"
+                  ? "e.g. Wash bedsheets & fold laundry"
+                  : category === "cooking"
+                  ? "e.g. Meal prep dinner for the week"
+                  : category === "course"
+                  ? "e.g. ISYE 3232 Quiz / Problem Set"
+                  : "What needs to get done?"
+              }
               className="w-full text-base sm:text-lg font-medium px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
             />
           </div>
@@ -310,8 +362,8 @@ export function NewTaskModal({
             )}
           </div>
 
-          {/* Priority & Course Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Priority & (Optional) Course Row */}
+          <div className={`grid grid-cols-1 ${category === "course" ? "sm:grid-cols-2" : ""} gap-3`}>
             {/* Priority */}
             <div>
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
@@ -348,54 +400,56 @@ export function NewTaskModal({
               </div>
             </div>
 
-            {/* Course Selector */}
-            <div>
-              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
-                Course / Class
-              </label>
+            {/* Course Selector (only when category is course) */}
+            {category === "course" && (
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
+                  Course / Class
+                </label>
 
-              {isAddingNewCourse ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={customCourse}
-                    onChange={(e) => setCustomCourse(e.target.value)}
-                    placeholder="e.g. CS 106B"
-                    className="flex-1 px-3 py-2 text-xs uppercase bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingNewCourse(false)}
-                    className="px-2 py-2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <select
-                    value={courseName}
-                    onChange={(e) => {
-                      if (e.target.value === "__NEW__") {
-                        setIsAddingNewCourse(true);
-                      } else {
-                        setCourseName(e.target.value);
-                      }
-                    }}
-                    className="w-full px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-200 font-medium focus:outline-none cursor-pointer"
-                  >
-                    <option value="">No Course</option>
-                    {availableCourses.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                    <option value="__NEW__">+ Add New Course...</option>
-                  </select>
-                </div>
-              )}
-            </div>
+                {isAddingNewCourse ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={customCourse}
+                      onChange={(e) => setCustomCourse(e.target.value)}
+                      placeholder="e.g. ISYE 3232"
+                      className="flex-1 px-3 py-2 text-xs uppercase bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingNewCourse(false)}
+                      className="px-2 py-2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={courseName}
+                      onChange={(e) => {
+                        if (e.target.value === "__NEW__") {
+                          setIsAddingNewCourse(true);
+                        } else {
+                          setCourseName(e.target.value);
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-200 font-medium focus:outline-none cursor-pointer"
+                    >
+                      <option value="">Select Class...</option>
+                      {availableCourses.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                      <option value="__NEW__">+ Add New Course...</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Duration & Reminder Row */}

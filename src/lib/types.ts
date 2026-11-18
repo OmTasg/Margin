@@ -2,6 +2,14 @@ export type Priority = "P1" | "P2" | "P3";
 
 export type TaskSource = "manual" | "canvas";
 
+export type TaskCategory =
+  | "course"
+  | "gym"
+  | "shopping"
+  | "laundry"
+  | "cooking"
+  | "personal";
+
 export interface Task {
   id: string;
   user_id?: string;
@@ -14,8 +22,10 @@ export interface Task {
   reminder_lead_time_minutes: number; // e.g. 15, 60, 180, 1440
   estimated_duration_minutes?: number | null; // e.g. 15, 30, 45, 60, 120
   source: TaskSource;
+  category?: TaskCategory | string | null; // e.g. "course", "gym", "shopping", "laundry", "cooking"
+  is_lecture_or_meeting?: boolean; // Zoom or recurring class meetings from Canvas
   external_url?: string | null; // link back to Canvas assignment
-  course_name?: string | null; // e.g. "CS106A", "Calculus III"
+  course_name?: string | null; // e.g. "ISYE 3232", "CS106A", "Calculus III"
   canvas_uid?: string | null; // iCal UID for deduplication
   google_event_id?: string | null; // Created Google Calendar event ID
   google_calendar_id?: string | null;
@@ -30,6 +40,7 @@ export interface UserSettings {
   default_reminder_lead_time_minutes: number; // default 15
   canvas_ics_url: string;
   canvas_last_synced_at?: string | null;
+  hide_virtual_classes?: boolean; // filter out Zoom/class lecture calendar events from todo list
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   google_token_expiry?: string | null;

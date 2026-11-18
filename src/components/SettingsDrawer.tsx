@@ -301,6 +301,26 @@ export function SettingsDrawer({
               />
               <span>{isSyncingCanvas ? "Syncing..." : "Sync Canvas Now"}</span>
             </button>
+
+            {/* Virtual classes filter toggle */}
+            <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={settings.hide_virtual_classes !== false}
+                onChange={(e) =>
+                  onUpdateSettings({ hide_virtual_classes: e.target.checked })
+                }
+                className="mt-0.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                  Hide Virtual Classes &amp; Zoom Meetings
+                </span>
+                <p className="text-[11px] text-zinc-400">
+                  Automatically hide recurring lecture blocks and Zoom links from your daily to-do list.
+                </p>
+              </div>
+            </label>
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />
