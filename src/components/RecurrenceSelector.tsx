@@ -22,9 +22,10 @@ interface Props {
   value: RecurrenceRule | null | undefined;
   onChange: (rule: RecurrenceRule | null) => void;
   referenceDate?: Date | string | null;
+  fullWidth?: boolean;
 }
 
-export function RecurrenceSelector({ value, onChange, referenceDate }: Props) {
+export function RecurrenceSelector({ value, onChange, referenceDate, fullWidth }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -171,21 +172,25 @@ export function RecurrenceSelector({ value, onChange, referenceDate }: Props) {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className={`relative ${fullWidth ? "w-full" : ""}`} ref={dropdownRef}>
       {/* Trigger Button */}
-      <div className="flex items-center gap-1.5">
+      <div className={`flex items-center gap-1.5 ${fullWidth ? "w-full" : ""}`}>
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition ${
+          className={`px-3 py-2 rounded-xl text-xs font-medium border flex items-center justify-between transition ${
+            fullWidth ? "w-full flex-1" : ""
+          } ${
             isRepeating
               ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-900/50 shadow-sm"
-              : "bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 dark:hover:border-zinc-600"
+              : "bg-zinc-50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
           }`}
         >
-          <Repeat className={`w-3.5 h-3.5 ${isRepeating ? "text-blue-600 dark:text-blue-400" : "text-zinc-400"}`} />
-          <span>{currentLabel}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-400 opacity-70 ml-0.5" />
+          <div className="flex items-center gap-2 truncate mr-1">
+            <Repeat className={`w-3.5 h-3.5 shrink-0 ${isRepeating ? "text-blue-600 dark:text-blue-400" : "text-zinc-400"}`} />
+            <span className="truncate">{currentLabel}</span>
+          </div>
+          <ChevronDown className="w-3.5 h-3.5 text-zinc-400 opacity-70 ml-0.5 shrink-0" />
         </button>
 
         {isRepeating && (
@@ -196,7 +201,7 @@ export function RecurrenceSelector({ value, onChange, referenceDate }: Props) {
               onChange(null);
             }}
             title="Remove recurrence"
-            className="p-1 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition shrink-0"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -205,7 +210,7 @@ export function RecurrenceSelector({ value, onChange, referenceDate }: Props) {
 
       {/* Google Calendar Style Recurrence Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-72 bg-white dark:bg-[#1a1c24] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 mt-1.5 w-full min-w-[270px] max-w-sm bg-white dark:bg-[#1a1c24] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
           <div className="text-[11px] font-semibold text-zinc-400 px-3.5 py-1 uppercase tracking-wider">
             Recurrence
           </div>

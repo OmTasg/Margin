@@ -224,41 +224,41 @@ export function NewTaskModal({
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Scrollable Task Form Body */}
           <div className="p-5 overflow-y-auto flex-1 min-h-0 space-y-4 overscroll-contain">
-            {/* Category Quick Chips */}
-          <div>
-            <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
-              Task Type
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              {(["course", "gym", "shopping", "laundry", "cooking", "personal"] as TaskCategory[]).map(
-                (catKey) => {
-                  const cfg = CATEGORY_CONFIG[catKey];
-                  const isSelected = category === catKey;
-                  return (
-                    <button
-                      key={catKey}
-                      type="button"
-                      onClick={() => {
-                        setCategory(catKey);
-                        if (catKey !== "course") {
-                          setCourseName("");
-                          setIsAddingNewCourse(false);
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-xl font-medium border flex items-center gap-1.5 transition ${
-                        isSelected
-                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-sm"
-                          : "bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
-                      }`}
-                    >
-                      <span>{cfg.icon}</span>
-                      <span>{cfg.label}</span>
-                    </button>
-                  );
-                }
-              )}
+            {/* Category Quick Chips - Single-row horizontal scroll on mobile */}
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 block mb-1.5">
+                Task Type
+              </label>
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-5 px-5 touch-pan-x flex-nowrap">
+                {(["course", "gym", "shopping", "laundry", "cooking", "personal"] as TaskCategory[]).map(
+                  (catKey) => {
+                    const cfg = CATEGORY_CONFIG[catKey];
+                    const isSelected = category === catKey;
+                    return (
+                      <button
+                        key={catKey}
+                        type="button"
+                        onClick={() => {
+                          setCategory(catKey);
+                          if (catKey !== "course") {
+                            setCourseName("");
+                            setIsAddingNewCourse(false);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl font-medium border flex items-center gap-1.5 transition shrink-0 whitespace-nowrap ${
+                          isSelected
+                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-sm"
+                            : "bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
+                        }`}
+                      >
+                        <span>{cfg.icon}</span>
+                        <span>{cfg.label}</span>
+                      </button>
+                    );
+                  }
+                )}
+              </div>
             </div>
-          </div>
 
           {/* Title */}
           <div>
@@ -305,7 +305,7 @@ export function NewTaskModal({
                 <span>Due Date</span>
               </label>
 
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 touch-pan-x flex-nowrap text-xs">
                 {[
                   { id: "today", label: "Today" },
                   { id: "tomorrow", label: "Tomorrow" },
@@ -318,7 +318,7 @@ export function NewTaskModal({
                     key={item.id}
                     type="button"
                     onClick={() => setSelectedDateMode(item.id as any)}
-                    className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                    className={`px-3 py-1.5 rounded-lg font-medium transition shrink-0 whitespace-nowrap ${
                       selectedDateMode === item.id
                         ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
                         : "bg-white dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/80 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -349,7 +349,7 @@ export function NewTaskModal({
                   <span>Time to do something by (Deadline)</span>
                 </label>
 
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 touch-pan-x flex-nowrap text-xs">
                   {[
                     { id: "11:59", label: "11:59 PM (Midnight)" },
                     { id: "17:00", label: "5:00 PM (End of Day)" },
@@ -361,7 +361,7 @@ export function NewTaskModal({
                       key={item.id}
                       type="button"
                       onClick={() => setSelectedTimeMode(item.id as any)}
-                      className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                      className={`px-3 py-1.5 rounded-lg font-medium transition shrink-0 whitespace-nowrap ${
                         selectedTimeMode === item.id
                           ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
                           : "bg-white dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700/80 hover:text-zinc-900 dark:hover:text-zinc-200"
@@ -395,6 +395,7 @@ export function NewTaskModal({
                 value={recurrence}
                 onChange={setRecurrence}
                 referenceDate={computeFinalDueDate() || new Date()}
+                fullWidth
               />
             </div>
           </div>
@@ -497,7 +498,7 @@ export function NewTaskModal({
                 <Hourglass className="w-3 h-3 text-zinc-400" />
                 <span>Estimated Duration</span>
               </label>
-              <div className="flex flex-wrap items-center gap-1 text-xs">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 touch-pan-x flex-nowrap text-xs">
                 {[15, 30, 45, 60, 90, 120].map((m) => {
                   const isSelected = durationMinutes === m;
                   const label = m >= 60 ? `${m / 60}h` : `${m}m`;
@@ -506,7 +507,7 @@ export function NewTaskModal({
                       key={m}
                       type="button"
                       onClick={() => setDurationMinutes(isSelected ? null : m)}
-                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition ${
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition shrink-0 whitespace-nowrap ${
                         isSelected
                           ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-transparent shadow-sm"
                           : "bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
@@ -541,7 +542,7 @@ export function NewTaskModal({
         </div>
 
         {/* Pinned Footer Action Buttons: Always visible, never cut off */}
-        <div className="px-5 py-3.5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0 flex items-center justify-between">
+        <div className="px-5 pt-3.5 pb-7 sm:py-3.5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-900/60 shrink-0 flex items-center justify-between">
           <span className="text-[11px] text-zinc-400 hidden sm:inline">
             Tip: Press <kbd className="font-mono px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">⌘+Enter</kbd> to save
           </span>

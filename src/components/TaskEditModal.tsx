@@ -47,6 +47,7 @@ export function TaskEditModal({
   const [estimatedDuration, setEstimatedDuration] = useState<number | null>(null);
   const [courseName, setCourseName] = useState("");
   const [externalUrl, setExternalUrl] = useState("");
+  const [showEditUrl, setShowEditUrl] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceRule | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -154,49 +155,27 @@ export function TaskEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-zinc-900 border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]">
+      <div className="bg-white dark:bg-[#14151c] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-3xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]">
         {/* Mobile drag handle */}
-        <div className="w-10 h-1 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto mt-2.5 sm:hidden shrink-0" />
+        <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700/80 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200/80 dark:border-zinc-800/80 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-100 dark:border-zinc-800/80 shrink-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+            <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-zinc-100">
               Edit Task
             </h3>
-            {task.external_url && (
-              <a
-                href={
-                  typeof navigator !== "undefined" &&
-                  /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) &&
-                  settings.canvas_open_in_app !== false
-                    ? getCanvasAppDeepLink(task.external_url) || task.external_url
-                    : task.external_url
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  const isMobile =
-                    typeof navigator !== "undefined" &&
-                    /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
-                  if (isMobile && settings.canvas_open_in_app !== false) {
-                    const deepLink = getCanvasAppDeepLink(task.external_url);
-                    if (deepLink) {
-                      e.preventDefault();
-                      window.location.href = deepLink;
-                    }
-                  }
-                }}
-                className="text-xs text-blue-500 hover:underline inline-flex items-center gap-0.5"
-              >
-                <span>Canvas</span>
-                <ArrowUpRight className="w-3 h-3" />
-              </a>
+            {task.source === "canvas" && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40 inline-flex items-center gap-1">
+                Canvas
+              </span>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md transition"
+            className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
+            aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
@@ -204,12 +183,12 @@ export function TaskEditModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSave} className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain text-xs">
-          {/* Category Chips */}
+          {/* Category Chips - Sleek horizontal scroll, 0 line wrapping */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5">
               Category
             </label>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-5 px-5 touch-pan-x flex-nowrap">
               {(["course", "gym", "shopping", "laundry", "cooking", "personal"] as TaskCategory[]).map(
                 (catKey) => {
                   const cfg = CATEGORY_CONFIG[catKey];
@@ -219,10 +198,10 @@ export function TaskEditModal({
                       key={catKey}
                       type="button"
                       onClick={() => setCategory(catKey)}
-                      className={`px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1 transition ${
+                      className={`px-3 py-1.5 rounded-xl font-medium text-xs flex items-center gap-1.5 transition shrink-0 border ${
                         isSelected
                           ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-sm"
-                          : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
+                          : "bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
                       }`}
                     >
                       <span>{cfg.icon}</span>
@@ -236,7 +215,7 @@ export function TaskEditModal({
 
           {/* Title */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5">
               Title
             </label>
             <input
@@ -244,30 +223,30 @@ export function TaskEditModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-sm font-medium focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500"
+              className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition"
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5">
               Notes
             </label>
             <textarea
-              rows={3}
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add optional notes..."
-              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500"
+              placeholder="Add details, link, or notes..."
+              className="w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none break-words transition"
             />
           </div>
 
-          {/* Priority (Things 3 style subtle buttons) */}
+          {/* Priority */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+            <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5">
               Priority
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               {(["P1", "P2", "P3"] as Priority[]).map((p) => {
                 const isSelected = priority === p;
                 const dot =
@@ -276,43 +255,45 @@ export function TaskEditModal({
                     : p === "P2"
                     ? "bg-amber-500"
                     : "bg-zinc-400";
+                const label = p === "P1" ? "High" : p === "P2" ? "Medium" : "Low";
                 return (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPriority(p)}
-                    className={`py-1.5 text-xs rounded-lg border flex items-center justify-center gap-1.5 transition ${
+                    className={`py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 font-medium border transition ${
                       isSelected
-                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold border-transparent"
-                        : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 font-semibold shadow-sm"
+                        : "bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700"
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>
-                    <span>{p === "P1" ? "High" : p === "P2" ? "Medium" : "Low"}</span>
+                    <span className={`w-2 h-2 rounded-full ${dot}`}></span>
+                    <span>{label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Due Date & Estimated Duration */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-                <Calendar className="w-3 h-3 opacity-60" />
-                <span>Due Date & Time</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={dueDateStr}
-                onChange={(e) => setDueDateStr(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400"
-              />
-            </div>
+          {/* Due Date & Time - Full Width to prevent text clash */}
+          <div>
+            <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+              <span>Due Date & Time</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={dueDateStr}
+              onChange={(e) => setDueDateStr(e.target.value)}
+              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            />
+          </div>
 
+          {/* Duration & Reminder Grid - 2 clean dropdowns that fit side-by-side */}
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-                <Hourglass className="w-3 h-3 opacity-60" />
+              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                <Hourglass className="w-3.5 h-3.5 text-amber-500" />
                 <span>Est. Duration</span>
               </label>
               <select
@@ -320,9 +301,27 @@ export function TaskEditModal({
                 onChange={(e) =>
                   setEstimatedDuration(e.target.value ? parseInt(e.target.value, 10) : null)
                 }
-                className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer"
+                className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
               >
                 {durationOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                <span>Reminder</span>
+              </label>
+              <select
+                value={reminderMinutes}
+                onChange={(e) => setReminderMinutes(parseInt(e.target.value, 10))}
+                className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
+              >
+                {reminderOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -333,74 +332,116 @@ export function TaskEditModal({
 
           {/* Recurrence (Google Calendar style) */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-              <Repeat className="w-3 h-3 opacity-60 text-blue-500" />
+            <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+              <Repeat className="w-3.5 h-3.5 text-blue-500" />
               <span>Repeat</span>
             </label>
             <RecurrenceSelector
               value={recurrence}
               onChange={setRecurrence}
               referenceDate={dueDateStr || new Date()}
+              fullWidth
             />
           </div>
 
-          {/* Reminder & Course */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Course - Only shown when category is Course */}
+          {category === "course" && (
             <div>
-              <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-                <Clock className="w-3 h-3 opacity-60" />
-                <span>Reminder</span>
-              </label>
-              <select
-                value={reminderMinutes}
-                onChange={(e) => setReminderMinutes(parseInt(e.target.value, 10))}
-                className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400 cursor-pointer"
-              >
-                {reminderOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-                <Tag className="w-3 h-3 opacity-60" />
-                <span>Course</span>
+              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-blue-500" />
+                <span>Course / Class</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. CS 106B"
+                placeholder="e.g. ISYE 3232"
                 value={courseName}
                 onChange={(e) => setCourseName(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs uppercase focus:outline-none focus:border-zinc-400"
+                className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs uppercase font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40"
               />
             </div>
-          </div>
+          )}
 
-          {/* External Canvas Link */}
-          <div>
-            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-              <Link className="w-3 h-3 opacity-60" />
-              <span>Canvas / External URL</span>
-            </label>
-            <input
-              type="url"
-              placeholder="https://canvas.../assignments/..."
-              value={externalUrl}
-              onChange={(e) => setExternalUrl(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-zinc-400"
-            />
-          </div>
+          {/* Canvas / External Link Preview Card */}
+          {externalUrl ? (
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                <Link className="w-3.5 h-3.5 text-blue-500" />
+                <span>Canvas Assignment Link</span>
+              </label>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 gap-2">
+                <span className="text-xs text-blue-600 dark:text-blue-400 truncate font-mono flex-1">
+                  {externalUrl}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <a
+                    href={
+                      typeof navigator !== "undefined" &&
+                      /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) &&
+                      settings.canvas_open_in_app !== false
+                        ? getCanvasAppDeepLink(externalUrl) || externalUrl
+                        : externalUrl
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      const isMobile =
+                        typeof navigator !== "undefined" &&
+                        /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
+                      if (isMobile && settings.canvas_open_in_app !== false) {
+                        const deepLink = getCanvasAppDeepLink(externalUrl);
+                        if (deepLink) {
+                          e.preventDefault();
+                          window.location.href = deepLink;
+                        }
+                      }
+                    }}
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center gap-1 transition shadow-sm"
+                  >
+                    <span>Open</span>
+                    <ArrowUpRight className="w-3 h-3" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUrl((prev) => !prev)}
+                    className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-medium transition"
+                  >
+                    {showEditUrl ? "Hide" : "Edit"}
+                  </button>
+                </div>
+              </div>
+              {showEditUrl && (
+                <input
+                  type="url"
+                  value={externalUrl}
+                  onChange={(e) => setExternalUrl(e.target.value)}
+                  className="w-full mt-2 px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none"
+                  placeholder="https://canvas..."
+                />
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                <Link className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Canvas / External URL</span>
+              </label>
+              <input
+                type="url"
+                placeholder="https://canvas.../assignments/..."
+                value={externalUrl}
+                onChange={(e) => setExternalUrl(e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
+            </div>
+          )}
         </form>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/50">
+        {/* Pinned Footer Actions with iOS Home Bar Safe-Area */}
+        <div className="flex items-center justify-between px-5 pt-3.5 pb-7 sm:py-3.5 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-900/80 shrink-0">
           <button
             type="button"
             onClick={handleDelete}
-            className="text-xs text-rose-500 hover:text-rose-600 font-medium transition flex items-center gap-1"
+            className="text-xs text-rose-500 hover:text-rose-600 font-medium transition flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete</span>
@@ -410,7 +451,7 @@ export function TaskEditModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
+              className="px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl transition"
             >
               Cancel
             </button>
@@ -418,7 +459,7 @@ export function TaskEditModal({
               type="button"
               onClick={handleSave}
               disabled={isSaving || !title.trim()}
-              className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 disabled:opacity-40 text-white dark:text-zinc-900 text-xs font-semibold rounded-lg transition"
+              className="px-5 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 disabled:opacity-40 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl shadow-sm transition"
             >
               {isSaving ? "Saving..." : "Save"}
             </button>
