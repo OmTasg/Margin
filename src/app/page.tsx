@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { useTasks } from "@/hooks/useTasks";
 import { useTheme } from "@/hooks/useTheme";
@@ -74,14 +74,40 @@ export default function Home() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const addToast = (type: "success" | "error" | "info", message: string) => {
-    const id = `${Date.now()}-${Math.random()}`;
-    setToasts((prev) => [...prev, { id, type, message }]);
-  };
+  const addToast = useCallback(
+    (
+      type: "success" | "error" | "info",
+      message: string,
+      action?: { label: string; onClick: () => void }
+    ) => {
+      const id = `${Date.now()}-${Math.random()}`;
+      setToasts((prev) => [...prev, { id, type, message, action }]);
+    },
+    []
+  );
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  const handleToggleTask = useCallback(
+    (taskId: string) => {
+      const res = toggleTaskComplete(taskId);
+      if (!res) return;
+      const { task, wasCompleted } = res;
+      if (wasCompleted) {
+        addToast("success", `Cleared "${task.title}"`, {
+          label: "Undo",
+          onClick: () => {
+            toggleTaskComplete(taskId);
+          },
+        });
+      } else {
+        addToast("info", `Restored "${task.title}"`);
+      }
+    },
+    [toggleTaskComplete, addToast]
+  );
 
   const [isNotifBannerDismissed, setIsNotifBannerDismissed] = useState(false);
 
@@ -340,7 +366,7 @@ export default function Home() {
               settings={settings}
               hideLectures={hideVirtualClasses}
               onToggleHideLectures={toggleHideVirtualClasses}
-              onToggleComplete={(id) => toggleTaskComplete(id)}
+              onToggleComplete={handleToggleTask}
               onEditTask={(task) => setEditingTask(task)}
               onAddTaskOnDate={(date) => {
                 setNewTaskInitialDate(date);
@@ -352,9 +378,7 @@ export default function Home() {
               groupedTasks={groupedTasks}
               currentView={currentView}
               settings={settings}
-              onToggleComplete={(id) => {
-                toggleTaskComplete(id);
-              }}
+              onToggleComplete={handleToggleTask}
               onEdit={(task) => setEditingTask(task)}
               onDelete={async (id) => {
                 await deleteTask(id);

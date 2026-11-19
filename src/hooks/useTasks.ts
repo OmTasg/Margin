@@ -235,7 +235,7 @@ export function useTasks(settings: UserSettings) {
     }
   }, [sanitizeAndPruneTasks]);
 
-  // Auto-sync when phone wakes up or user switches back to Margin tab
+  // Auto-sync when phone wakes up or user switches back to Margin tab + periodic interval
   useEffect(() => {
     const handleSyncOnVisible = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") {
@@ -244,9 +244,17 @@ export function useTasks(settings: UserSettings) {
     };
     window.addEventListener("focus", handleSyncOnVisible);
     document.addEventListener("visibilitychange", handleSyncOnVisible);
+
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        syncCloudTasks();
+      }
+    }, 10000);
+
     return () => {
       window.removeEventListener("focus", handleSyncOnVisible);
       document.removeEventListener("visibilitychange", handleSyncOnVisible);
+      clearInterval(interval);
     };
   }, [syncCloudTasks]);
 
@@ -412,52 +420,50 @@ export function useTasks(settings: UserSettings) {
 
   // Toggle complete
   const toggleTaskComplete = useCallback(
-    (taskId: string) => {
+    (taskId: string): { task: Task; wasCompleted: boolean } | null => {
+      const existing = tasksRef.current.find((t) => t.id === taskId);
+      if (!existing) return null;
+
+      const isNowCompleted = !existing.is_completed;
       let nextRecurringTask: Task | null = null;
-      let completedTask: Task | null = null;
+
+      // If completing a recurring task, calculate next occurrence
+      if (isNowCompleted && existing.recurrence && existing.recurrence.frequency !== "none") {
+        nextRecurringTask = calculateNextTaskOccurrence(existing);
+      }
+
+      const updatedTask: Task = {
+        ...existing,
+        is_completed: isNowCompleted,
+        completed_at: isNowCompleted ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      };
 
       setTasks((prev) => {
-        let spawnedTask: Task | null = null;
-        const next = prev.map((t) => {
-          if (t.id === taskId) {
-            const isNowCompleted = !t.is_completed;
-
-            // If completing a recurring task, calculate next occurrence
-            if (isNowCompleted && t.recurrence && t.recurrence.frequency !== "none") {
-              spawnedTask = calculateNextTaskOccurrence(t);
-            }
-
-            const updated: Task = {
-              ...t,
-              is_completed: isNowCompleted,
-              completed_at: isNowCompleted ? new Date().toISOString() : null,
-              updated_at: new Date().toISOString(),
-            };
-            completedTask = updated;
-            return updated;
-          }
-          return t;
-        });
-
-        if (spawnedTask) {
-          nextRecurringTask = spawnedTask;
-          const updatedWithSpawned = [spawnedTask, ...next];
-          saveLocalTasks(updatedWithSpawned);
-          return updatedWithSpawned;
-        }
-
-        saveLocalTasks(next);
-        return next;
+        const next = prev.map((t) => (t.id === taskId ? updatedTask : t));
+        const updatedWithSpawned = nextRecurringTask ? [nextRecurringTask, ...next] : next;
+        saveLocalTasks(updatedWithSpawned);
+        return updatedWithSpawned;
       });
 
+      // Synchronously push to Supabase so mobile and laptop reconcile instantly
       if (isSupabaseConfigured()) {
-        if (completedTask) {
-          pushTaskToCloud(completedTask);
-        }
+        pushTaskToCloud(updatedTask).catch((err) =>
+          console.error("[Cloud Sync] Failed to push toggled task:", err)
+        );
         if (nextRecurringTask) {
-          pushTaskToCloud(nextRecurringTask);
+          pushTaskToCloud(nextRecurringTask).catch((err) =>
+            console.error("[Cloud Sync] Failed to push next recurring task:", err)
+          );
         }
       }
+
+      // Check push notifications to update lock screen schedule
+      if (typeof window !== "undefined") {
+        fetch("/api/push/check", { method: "POST" }).catch(() => {});
+      }
+
+      return { task: updatedTask, wasCompleted: isNowCompleted };
     },
     []
   );
@@ -465,11 +471,13 @@ export function useTasks(settings: UserSettings) {
   // Delete task
   const deleteTask = useCallback(
     async (taskId: string) => {
-      const taskToDelete = tasks.find((t) => t.id === taskId);
+      const taskToDelete = tasksRef.current.find((t) => t.id === taskId);
 
       // Cloud delete
       if (isSupabaseConfigured()) {
-        deleteTaskFromCloud(taskId);
+        deleteTaskFromCloud(taskId).catch((err) =>
+          console.error("[Cloud Sync] Failed to delete task:", err)
+        );
       }
 
       // Delete from Google Calendar if event exists
@@ -489,10 +497,13 @@ export function useTasks(settings: UserSettings) {
         }).catch((err) => console.error("Error deleting from GCal:", err));
       }
 
-      const next = tasks.filter((t) => t.id !== taskId);
-      commitTasks(next);
+      setTasks((prev) => {
+        const next = prev.filter((t) => t.id !== taskId);
+        saveLocalTasks(next);
+        return next;
+      });
     },
-    [tasks, settings, commitTasks]
+    [settings]
   );
 
   // Batch push all unsynced tasks to Google Calendar

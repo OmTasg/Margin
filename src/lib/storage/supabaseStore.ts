@@ -202,15 +202,21 @@ export async function syncTwoWayTasks(localTasks: Task[]): Promise<SyncResult> {
       }
     }
 
-    // Check for local tasks missing on remote to push
-    const missingOnRemote = localTasks.filter(
-      (lt) => !remoteTasks.some((rt) => rt.id === lt.id)
-    );
+    // Identify local tasks that need to be pushed to Supabase:
+    // 1. Missing entirely on remote
+    // 2. Or updated locally more recently than remote (e.g. offline toggle/edit)
+    const tasksToPush = localTasks.filter((lt) => {
+      const rt = remoteTasks.find((r) => r.id === lt.id);
+      if (!rt) return true;
+      const localTime = new Date(lt.updated_at || 0).getTime();
+      const remoteTime = new Date(rt.updated_at || 0).getTime();
+      return localTime > remoteTime;
+    });
 
     let pushedCount = 0;
-    if (missingOnRemote.length > 0) {
-      console.log(`[Supabase Sync] Found ${missingOnRemote.length} local task(s) missing on remote. Pushing...`);
-      const pushRes = await pushTasksBatchToCloud(missingOnRemote);
+    if (tasksToPush.length > 0) {
+      console.log(`[Supabase Sync] Found ${tasksToPush.length} local task(s) to push/update to cloud. Pushing...`);
+      const pushRes = await pushTasksBatchToCloud(tasksToPush);
       pushedCount = pushRes.pushed;
     }
 
