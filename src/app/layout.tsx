@@ -69,8 +69,37 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                  navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    // Check for updates on every launch and focus
+                    reg.update().catch(function() {});
+                    reg.onupdatefound = function() {
+                      var installingWorker = reg.installing;
+                      if (installingWorker) {
+                        installingWorker.onstatechange = function() {
+                          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            window.location.reload();
+                          }
+                        };
+                      }
+                    };
+                  }).catch(function(err) {
                     console.log('SW registration skipped or failed:', err);
+                  });
+                });
+
+                var refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function() {
+                  if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                  }
+                });
+
+                window.addEventListener('focus', function() {
+                  navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for (var i = 0; i < regs.length; i++) {
+                      regs[i].update().catch(function() {});
+                    }
                   });
                 });
               }
