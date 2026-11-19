@@ -2,8 +2,11 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Margin",
-  description: "Minimalist personal task manager with Canvas LMS and Google Calendar integration.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "https://margin-student.vercel.app"
+  ),
+  title: "Margin — Student Task & Assignment Manager",
+  description: "Minimalist student personal task manager with Canvas LMS and Google Calendar integration.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -14,8 +17,29 @@ export const metadata: Metadata = {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
     ],
-    apple: "/icons/apple-touch-icon.png",
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "Margin — Student Task & Assignment Manager",
+    description: "Minimalist student personal task manager with Canvas LMS and Google Calendar integration.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Margin — Student Task & Assignment Manager",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Margin — Student Task & Assignment Manager",
+    description: "Minimalist student personal task manager with Canvas LMS and Google Calendar integration.",
+    images: ["/og-image.png"],
   },
 };
 

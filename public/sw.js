@@ -1,10 +1,12 @@
-const CACHE_NAME = "focustask-cache-v1";
+const CACHE_NAME = "margin-cache-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",
+  "/icon.svg",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
   "/icons/apple-touch-icon.png",
+  "/og-image.png",
 ];
 
 self.addEventListener("install", (event) => {
