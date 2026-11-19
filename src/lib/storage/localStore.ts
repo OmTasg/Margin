@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   google_token_expiry: null,
   google_selected_calendar_id: "primary",
   google_auto_push_enabled: false,
+  google_skip_canvas_tasks: true,
   google_user_email: null,
   theme: "dark",
 };

@@ -462,6 +462,41 @@ export function SettingsDrawer({
                   </button>
                 )}
               </div>
+
+              <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-1.5">
+                <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>24/7 Cloud Trigger (When Screen is Off)</span>
+                </span>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Apple APNs push notifications require a cloud cron to trigger alerts when your phone is turned off or Margin is closed. Run this free 1-minute cron in your Supabase SQL Editor:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sql = `-- Run this once in your Supabase SQL Editor for 24/7 lock-screen notifications:
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+SELECT cron.schedule(
+    'margin-push-reminders',
+    '* * * * *',
+    $$
+    SELECT net.http_post(
+        url := 'https://margin-vilh.vercel.app/api/push/cron',
+        headers := '{"Content-Type": "application/json"}'::jsonb,
+        body := '{}'::jsonb
+    );
+    $$
+);`;
+                    navigator.clipboard.writeText(sql);
+                    alert("24/7 Supabase Cron SQL copied to clipboard! Paste and run it in your Supabase SQL Editor.");
+                  }}
+                  className="w-full py-1.5 px-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-[11px] font-medium rounded-lg flex items-center justify-center gap-1.5 transition border border-zinc-200 dark:border-zinc-700"
+                >
+                  <span>📋 Copy 24/7 Supabase Cron SQL</span>
+                </button>
+              </div>
             </div>
 
             {/* Laptop / Browser Audio & Banner */}
@@ -805,46 +840,93 @@ END $$;`;
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />
 
-          {/* SECTION 3: Google Calendar Integration */}
-          <div className="space-y-2.5">
+          {/* SECTION 3: Calendar & Lock-Screen Alarms (Zero Duplicates) */}
+          <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 font-medium">
               <Calendar className="w-3.5 h-3.5 opacity-60" />
-              <span>Google Calendar Feed</span>
+              <span>Apple &amp; Google Calendar Alarms</span>
             </div>
 
-            <p className="text-zinc-400 leading-relaxed">
-              Subscribe to your Margin tasks directly in Google Calendar:
+            <p className="text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed">
+              For 100% reliable hardware alarms on your iPhone lock screen (even when your phone is locked, off, or offline), sync with your phone&apos;s native calendar.
             </p>
 
-            <div className="flex items-center gap-2">
+            {/* Skip Canvas assignments toggle to avoid duplicates */}
+            <label className="flex items-start gap-2.5 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/60 dark:border-zinc-800/60 cursor-pointer">
               <input
-                type="text"
-                readOnly
-                value={
-                  typeof window !== "undefined"
-                    ? `${window.location.origin}/api/calendar.ics`
-                    : "/api/calendar.ics"
+                type="checkbox"
+                checked={settings.google_skip_canvas_tasks !== false}
+                onChange={(e) =>
+                  onUpdateSettings({ google_skip_canvas_tasks: e.target.checked })
                 }
-                className="flex-1 px-2.5 py-1.5 text-xs font-mono bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-700 dark:text-zinc-300 select-all"
+                className="mt-0.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  const url =
-                    typeof window !== "undefined"
-                      ? `${window.location.origin}/api/calendar.ics`
-                      : "/api/calendar.ics";
-                  navigator.clipboard.writeText(url);
-                  alert("Feed URL copied to clipboard!");
-                }}
-                className="px-2.5 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-100 font-medium rounded-lg transition"
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                  Skip Canvas assignments (Avoid Duplicates)
+                </span>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-tight">
+                  Recommended if Canvas is already linked to your Google Calendar. Only your manual tasks and personal to-dos will be synced.
+                </p>
+              </div>
+            </label>
+
+            {/* 1-Tap Apple Calendar Subscription */}
+            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-2">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>1-Tap Apple Calendar (iPhone Hardware Alarms)</span>
+              </span>
+              <p className="text-[11px] text-blue-800/80 dark:text-blue-200/80 leading-relaxed">
+                Subscribes your iPhone Calendar to Margin with native alarms (<code className="font-mono">VALARM</code>). Rings your lock screen 15m before tasks without needing any app open.
+              </p>
+              <a
+                href={
+                  typeof window !== "undefined"
+                    ? `webcal://${window.location.host}/api/calendar.ics${settings.google_skip_canvas_tasks !== false ? "?excludeCanvas=true" : ""}`
+                    : "#"
+                }
+                className="inline-flex w-full py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold items-center justify-center gap-1.5 transition text-center"
               >
-                Copy
-              </button>
+                <span>📲 Subscribe in iPhone Apple Calendar</span>
+              </a>
             </div>
-            <p className="text-[11px] text-zinc-400">
-              In Google Calendar: click <strong>+ next to "Other calendars"</strong> &gt; <strong>From URL</strong> &gt; paste this link.
-            </p>
+
+            {/* Google Calendar Feed */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Google Calendar Feed URL
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/api/calendar.ics${settings.google_skip_canvas_tasks !== false ? "?excludeCanvas=true" : ""}`
+                      : "/api/calendar.ics"
+                  }
+                  className="flex-1 px-2.5 py-1.5 text-xs font-mono bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/80 rounded-lg text-zinc-700 dark:text-zinc-300 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url =
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/api/calendar.ics${settings.google_skip_canvas_tasks !== false ? "?excludeCanvas=true" : ""}`
+                        : "/api/calendar.ics";
+                    navigator.clipboard.writeText(url);
+                    alert("Calendar Feed URL copied to clipboard!");
+                  }}
+                  className="px-2.5 py-1.5 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-100 font-medium rounded-lg text-xs transition"
+                >
+                  Copy
+                </button>
+              </div>
+              <p className="text-[10px] text-zinc-400">
+                In Google Calendar: click <strong>+ next to &ldquo;Other calendars&rdquo;</strong> ➔ <strong>From URL</strong> ➔ paste this link.
+              </p>
+            </div>
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />

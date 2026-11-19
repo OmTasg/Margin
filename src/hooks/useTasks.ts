@@ -368,9 +368,11 @@ export function useTasks(settings: UserSettings) {
 
       // Auto-push to Google if enabled
       if (settings.google_auto_push_enabled && (settings.google_access_token || settings.google_refresh_token)) {
-        pushTaskToGCal(newTask, settings).catch((err) =>
-          console.error("Auto push to Google Calendar failed:", err)
-        );
+        if (!(settings.google_skip_canvas_tasks && newTask.source === "canvas")) {
+          pushTaskToGCal(newTask, settings).catch((err) =>
+            console.error("Auto push to Google Calendar failed:", err)
+          );
+        }
       }
 
       return newTask;
@@ -509,7 +511,11 @@ export function useTasks(settings: UserSettings) {
   // Batch push all unsynced tasks to Google Calendar
   const batchPushAllToGCal = useCallback(
     async (userSettings: UserSettings): Promise<{ pushed: number; failed: number }> => {
-      const unpushed = tasks.filter((t) => !t.is_completed && !t.is_pushed_to_google);
+      const unpushed = tasks.filter((t) => {
+        if (t.is_completed || t.is_pushed_to_google) return false;
+        if (userSettings.google_skip_canvas_tasks && t.source === "canvas") return false;
+        return true;
+      });
       let pushed = 0;
       let failed = 0;
 
@@ -538,8 +544,12 @@ export function useTasks(settings: UserSettings) {
         pushTasksBatchToCloud(cleaned);
       }
 
-      // If auto-push is enabled, push newly imported unpushed tasks
-      if (settings.google_auto_push_enabled && (settings.google_access_token || settings.google_refresh_token)) {
+      // If auto-push is enabled and Canvas tasks are not skipped, push newly imported unpushed tasks
+      if (
+        settings.google_auto_push_enabled &&
+        !settings.google_skip_canvas_tasks &&
+        (settings.google_access_token || settings.google_refresh_token)
+      ) {
         cleaned
           .filter((t) => t.source === "canvas" && !t.is_pushed_to_google && !t.is_completed)
           .forEach((t) => pushTaskToGCal(t, settings).catch(() => {}));

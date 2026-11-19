@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { subscription, userAgent } = body;
+    const { subscription, userAgent, supabaseUrl, supabaseAnonKey } = body;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
       return NextResponse.json(
@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
       endpoint: subscription.endpoint,
       keys: { p256dh, auth },
       userAgent: userAgent || req.headers.get("user-agent") || undefined,
+      supabaseUrl,
+      supabaseAnonKey,
     });
 
     return NextResponse.json({ success: true });

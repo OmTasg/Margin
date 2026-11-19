@@ -16,7 +16,7 @@ export interface StoredPushSubscription {
 }
 
 const LOCAL_SUBSCRIPTIONS_FILE = path.join(
-  process.cwd(),
+  process.env.VERCEL ? "/tmp" : process.cwd(),
   ".margin_push_subscriptions.json"
 );
 
@@ -47,9 +47,32 @@ export async function savePushSubscription(sub: {
   endpoint: string;
   keys: { p256dh: string; auth: string };
   userAgent?: string;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
 }): Promise<void> {
-  const url = getSupabaseUrl();
-  const key = getSupabaseAnonKey();
+  if (sub.supabaseUrl && sub.supabaseAnonKey) {
+    try {
+      fs.writeFileSync(
+        path.join(process.env.VERCEL ? "/tmp" : process.cwd(), ".margin_supabase_creds.json"),
+        JSON.stringify({ url: sub.supabaseUrl, key: sub.supabaseAnonKey }),
+        "utf-8"
+      );
+    } catch {}
+  }
+
+  let url = sub.supabaseUrl || getSupabaseUrl();
+  let key = sub.supabaseAnonKey || getSupabaseAnonKey();
+
+  if ((!url || !key) && typeof window === "undefined") {
+    try {
+      const credsPath = path.join(process.env.VERCEL ? "/tmp" : process.cwd(), ".margin_supabase_creds.json");
+      if (fs.existsSync(credsPath)) {
+        const creds = JSON.parse(fs.readFileSync(credsPath, "utf-8"));
+        if (creds.url) url = creds.url;
+        if (creds.key) key = creds.key;
+      }
+    } catch {}
+  }
 
   // 1. Always save to local server file cache
   const existing = getLocalSubscriptions();
@@ -86,8 +109,19 @@ export async function savePushSubscription(sub: {
  * Retrieve all registered push subscriptions.
  */
 export async function getAllPushSubscriptions(): Promise<StoredPushSubscription[]> {
-  const url = getSupabaseUrl();
-  const key = getSupabaseAnonKey();
+  let url = getSupabaseUrl();
+  let key = getSupabaseAnonKey();
+
+  if ((!url || !key) && typeof window === "undefined") {
+    try {
+      const credsPath = path.join(process.env.VERCEL ? "/tmp" : process.cwd(), ".margin_supabase_creds.json");
+      if (fs.existsSync(credsPath)) {
+        const creds = JSON.parse(fs.readFileSync(credsPath, "utf-8"));
+        if (creds.url) url = creds.url;
+        if (creds.key) key = creds.key;
+      }
+    } catch {}
+  }
 
   const localSubs = getLocalSubscriptions();
 
@@ -99,24 +133,21 @@ export async function getAllPushSubscriptions(): Promise<StoredPushSubscription[
         .select("endpoint, p256dh, auth, user_agent, updated_at");
 
       if (!error && data && data.length > 0) {
-        // Merge Supabase and local
-        const mergedMap = new Map<string, StoredPushSubscription>();
-        localSubs.forEach((s) => mergedMap.set(s.endpoint, s));
+        // Merge Supabase subscriptions with local
+        const map = new Map<string, StoredPushSubscription>();
+        localSubs.forEach((s) => map.set(s.endpoint, s));
         data.forEach((row: any) => {
-          mergedMap.set(row.endpoint, {
+          map.set(row.endpoint, {
             endpoint: row.endpoint,
-            keys: {
-              p256dh: row.p256dh,
-              auth: row.auth,
-            },
+            keys: { p256dh: row.p256dh, auth: row.auth },
             user_agent: row.user_agent,
             updated_at: row.updated_at,
           });
         });
-        return Array.from(mergedMap.values());
+        return Array.from(map.values());
       }
     } catch (err) {
-      console.warn("Could not fetch push subscriptions from Supabase:", err);
+      console.warn("Could not retrieve push subscriptions from Supabase:", err);
     }
   }
 

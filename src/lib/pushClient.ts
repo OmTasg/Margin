@@ -1,6 +1,12 @@
 "use client";
 
 import { VAPID_PUBLIC_KEY, urlBase64ToUint8Array } from "./pushConfig";
+import {
+  createClient,
+  isSupabaseConfigured,
+  getSupabaseUrl,
+  getSupabaseAnonKey,
+} from "./supabase/client";
 
 export interface PushStatus {
   isSupported: boolean;
@@ -110,12 +116,34 @@ export async function registerPushSubscription(): Promise<{
 
     // 4. Send subscription to our server backend (Supabase / API)
     const rawSub = sub.toJSON();
+
+    // Directly save to Supabase from the client if configured
+    if (isSupabaseConfigured() && rawSub.keys) {
+      try {
+        const supabase = createClient();
+        await supabase.from("push_subscriptions").upsert(
+          {
+            endpoint: sub.endpoint,
+            p256dh: rawSub.keys.p256dh,
+            auth: rawSub.keys.auth,
+            user_agent: navigator.userAgent,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "endpoint" }
+        );
+      } catch (cloudErr) {
+        console.warn("Client direct push subscription save warning:", cloudErr);
+      }
+    }
+
     const res = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         subscription: rawSub,
         userAgent: navigator.userAgent,
+        supabaseUrl: getSupabaseUrl(),
+        supabaseAnonKey: getSupabaseAnonKey(),
       }),
     });
 

@@ -9,7 +9,7 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 const NOTIFIED_PUSH_LOG = path.join(
-  process.cwd(),
+  process.env.VERCEL ? "/tmp" : process.cwd(),
   ".margin_notified_push.json"
 );
 
@@ -36,8 +36,19 @@ export async function POST(req: NextRequest) {
     let tasks: any[] = body.tasks || [];
 
     // If no tasks provided in body, load active tasks from Supabase
-    const url = getSupabaseUrl();
-    const key = getSupabaseAnonKey();
+    let url = getSupabaseUrl();
+    let key = getSupabaseAnonKey();
+    if ((!url || !key) && typeof window === "undefined") {
+      try {
+        const credsPath = path.join(process.env.VERCEL ? "/tmp" : process.cwd(), ".margin_supabase_creds.json");
+        if (fs.existsSync(credsPath)) {
+          const creds = JSON.parse(fs.readFileSync(credsPath, "utf-8"));
+          if (creds.url) url = creds.url;
+          if (creds.key) key = creds.key;
+        }
+      } catch {}
+    }
+
     if (tasks.length === 0 && url && key) {
       const supabase = createClient(url, key);
       const { data } = await supabase

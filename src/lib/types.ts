@@ -72,6 +72,7 @@ export interface UserSettings {
   google_token_expiry?: string | null;
   google_selected_calendar_id: string; // e.g. 'primary'
   google_auto_push_enabled: boolean;
+  google_skip_canvas_tasks?: boolean; // exclude Canvas assignments to avoid duplicates
   google_user_email?: string | null;
   theme: "dark" | "light" | "system";
 }

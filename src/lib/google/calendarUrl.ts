@@ -55,10 +55,10 @@ export function generateIcsFeed(tasks: Task[]): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//FocusTask App//FocusTask Calendar Feed//EN",
+    "PRODID:-//Margin App//Margin Calendar Feed//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:FocusTask Tasks",
+    "X-WR-CALNAME:Margin Tasks & Reminders",
     "X-WR-TIMEZONE:UTC",
   ];
 
@@ -74,8 +74,10 @@ export function generateIcsFeed(tasks: Task[]): string {
         (t.external_url ? `Canvas: ${t.external_url}\n` : "") +
         `Priority: ${t.priority}`;
 
+      const leadMins = typeof t.reminder_lead_time_minutes === "number" ? t.reminder_lead_time_minutes : 15;
+
       lines.push("BEGIN:VEVENT");
-      lines.push(`UID:${t.canvas_uid || `focustask-${t.id}`}`);
+      lines.push(`UID:${t.canvas_uid || `margin-${t.id}`}`);
       lines.push(`DTSTAMP:${formatIcsDate(new Date().toISOString())}`);
       lines.push(`DTSTART:${formatIcsDate(startDate.toISOString())}`);
       lines.push(`DTEND:${formatIcsDate(dueDate.toISOString())}`);
@@ -84,6 +86,13 @@ export function generateIcsFeed(tasks: Task[]): string {
       if (t.external_url) {
         lines.push(`URL:${t.external_url}`);
       }
+      // Native Apple Calendar / Google Calendar alarm for lock screen banner
+      lines.push("BEGIN:VALARM");
+      lines.push("ACTION:DISPLAY");
+      lines.push(`DESCRIPTION:Reminder: ${summary}`);
+      lines.push(`TRIGGER:-PT${leadMins}M`);
+      lines.push("END:VALARM");
+
       lines.push("END:VEVENT");
     });
 
