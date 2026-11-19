@@ -84,6 +84,14 @@ export function SettingsDrawer({
     message: string;
   } | null>(null);
 
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      Boolean((window.navigator as any).standalone));
+
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfigDetails());
   const [customSupabaseUrl, setCustomSupabaseUrl] = useState("");
   const [customSupabaseKey, setCustomSupabaseKey] = useState("");
@@ -332,26 +340,49 @@ export function SettingsDrawer({
             </p>
 
             {/* Notification permission button / actions */}
-            <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex flex-col sm:flex-row items-stretch gap-2 pt-0.5">
               {notificationPermission !== "granted" ? (
                 <button
                   type="button"
                   onClick={handleEnableNotifications}
-                  className="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                  className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
                 >
                   <Bell className="w-3.5 h-3.5" />
                   <span>Enable Device Notifications</span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleTestNotification}
-                  className="flex-1 py-1.5 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition border border-zinc-200 dark:border-zinc-700"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Send Test Notification & Chime</span>
-                </button>
-              )}
+              ) : null}
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                className="flex-1 py-2 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition border border-zinc-200 dark:border-zinc-700"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Test Notification & Chime</span>
+              </button>
+            </div>
+
+            {/* iPhone / iOS Special Guide */}
+            {isIOS && !isStandalone && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-[11px] space-y-1">
+                <div className="font-semibold flex items-center gap-1.5">
+                  <span>📲</span>
+                  <span>iPhone / Safari Notification Setup</span>
+                </div>
+                <p className="leading-relaxed">
+                  Apple only allows web notifications if Margin is added to your Home Screen: tap Safari&apos;s <strong>Share</strong> button (square with arrow up) and select <strong>&ldquo;Add to Home Screen&rdquo;</strong>.
+                </p>
+              </div>
+            )}
+
+            {/* 100% Guaranteed Lock Screen & Watch Notifications Tip */}
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-800 dark:text-blue-300 text-[11px] space-y-1">
+              <div className="font-semibold flex items-center gap-1.5">
+                <span>⏰</span>
+                <span>Lock Screen & Apple Watch Alerts</span>
+              </div>
+              <p className="leading-relaxed">
+                For 100% reliable alerts when your phone is locked or your laptop lid is shut, connect <strong>Google Calendar</strong> below. Reminders will push directly to your device&apos;s native calendar with lock screen alarms.
+              </p>
             </div>
 
             {notificationFeedback && (

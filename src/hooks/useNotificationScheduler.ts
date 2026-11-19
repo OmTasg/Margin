@@ -102,12 +102,8 @@ export function useNotificationScheduler({
       // 1. Lead-Time Reminder (e.g. 15m or 1h before)
       if (leadMins > 0) {
         const leadTriggerTime = dueTime - leadMins * 60 * 1000;
-        // Fire if we've passed the trigger time, haven't passed due date, and within 10 min window
-        if (
-          now >= leadTriggerTime &&
-          now < dueTime &&
-          now - leadTriggerTime < 10 * 60 * 1000
-        ) {
+        // Fire if we've passed the trigger time, haven't passed due date, and haven't notified yet
+        if (now >= leadTriggerTime && now < dueTime) {
           const leadKey = `lead-${task.id}-${task.due_date}-${leadMins}`;
           if (!isAlreadyNotified(leadKey)) {
             markNotified(leadKey);
@@ -149,17 +145,22 @@ export function useNotificationScheduler({
         }
       }
 
-      // 2. Exact Due-Time Alert (if enabled)
+      // 2. Exact Due-Time Alert or Catch-Up within 3 hours
       if (settings.notify_at_due_time !== false) {
-        // Fire if we've passed due date and within 10 min window
-        if (now >= dueTime && now - dueTime < 10 * 60 * 1000) {
+        const threeHours = 3 * 60 * 60 * 1000;
+        if (now >= dueTime && now - dueTime < threeHours) {
           const dueKey = `due-${task.id}-${task.due_date}`;
           if (!isAlreadyNotified(dueKey)) {
             markNotified(dueKey);
 
             const timeStr = format(new Date(task.due_date), "h:mm a");
-            const title = `Due Now: ${task.course_name ? `[${task.course_name}] ` : ""}${task.title}`;
-            const body = `Scheduled for ${timeStr}. Tap to review or mark done.`;
+            const isJustNow = now - dueTime < 5 * 60 * 1000;
+            const title = isJustNow
+              ? `Due Now: ${task.course_name ? `[${task.course_name}] ` : ""}${task.title}`
+              : `Past Due: ${task.course_name ? `[${task.course_name}] ` : ""}${task.title}`;
+            const body = isJustNow
+              ? `Scheduled for ${timeStr}. Tap to review or mark done.`
+              : `Was scheduled for ${timeStr}. Tap to review or complete.`;
 
             // Trigger system notification
             sendBrowserNotification({
@@ -178,7 +179,7 @@ export function useNotificationScheduler({
             if (onNotifyInApp) {
               onNotifyInApp({
                 type: "warning",
-                title: "Task Due Now",
+                title: isJustNow ? "Task Due Now" : "Task Past Due",
                 message: `${title}`,
                 taskId: task.id,
               });
@@ -193,22 +194,22 @@ export function useNotificationScheduler({
   useEffect(() => {
     checkUpcomingReminders();
 
-    // Check every 20 seconds
-    const interval = setInterval(checkUpcomingReminders, 20000);
+    // Check every 15 seconds
+    const interval = setInterval(checkUpcomingReminders, 15000);
 
-    // Also check immediately when user switches tabs back to Margin
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        setPermission(getNotificationPermission());
-        checkUpcomingReminders();
-      }
+    // Also check immediately when user switches tabs or focuses window back to Margin
+    const handleWakeup = () => {
+      setPermission(getNotificationPermission());
+      checkUpcomingReminders();
     };
 
-    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener("visibilitychange", handleWakeup);
+    window.addEventListener("focus", handleWakeup);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener("visibilitychange", handleWakeup);
+      window.removeEventListener("focus", handleWakeup);
     };
   }, [checkUpcomingReminders]);
 

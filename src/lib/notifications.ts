@@ -55,6 +55,9 @@ export function playNotificationChime(): void {
     if (!AudioContextClass) return;
 
     const ctx = new AudioContextClass();
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     // First bell tone (D5 - 587.33 Hz)
@@ -117,35 +120,43 @@ export async function sendBrowserNotification({
   try {
     // 1. Try Service Worker showNotification first (supports PWA installed mode on mobile/desktop)
     if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg && reg.showNotification) {
-        await reg.showNotification(title, {
-          body,
-          icon,
-          badge,
-          tag,
-          data,
-          vibrate: [200, 100, 200],
-        } as any);
-        return true;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, {
+            body,
+            icon,
+            badge,
+            tag,
+            data,
+            vibrate: [200, 100, 200],
+          } as any);
+          return true;
+        }
+      } catch (swErr) {
+        console.debug("Service Worker notification failed, falling back to desktop Notification:", swErr);
       }
     }
 
     // 2. Fallback to standard web Notification
-    const n = new Notification(title, {
-      body,
-      icon,
-      badge,
-      tag,
-      data,
-    });
+    if (typeof window !== "undefined" && "Notification" in window) {
+      const n = new Notification(title, {
+        body,
+        icon,
+        badge,
+        tag,
+        data,
+      });
 
-    n.onclick = () => {
-      window.focus();
-      n.close();
-    };
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
 
-    return true;
+      return true;
+    }
+
+    return false;
   } catch (err) {
     console.warn("Failed to dispatch browser notification:", err);
     return false;
