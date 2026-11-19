@@ -1,4 +1,4 @@
-const CACHE_NAME = "margin-cache-v2";
+const CACHE_NAME = "margin-cache-v3";
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",
@@ -63,9 +63,41 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
+// Handle Apple APNs / Web Push Events (Essential for iPhone Lock Screen Notifications)
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  try {
+    const payload = event.data.json();
+    const title = payload.title || "Margin Reminder 🔔";
+    const options = {
+      body: payload.body || "You have an upcoming task deadline.",
+      icon: payload.icon || "/icons/icon-192x192.png",
+      badge: payload.badge || "/icons/icon-192x192.png",
+      tag: payload.tag || "margin-task-reminder",
+      data: payload.data || { url: "/" },
+      vibrate: [200, 100, 200],
+      renotify: true,
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    const text = event.data.text();
+    event.waitUntil(
+      self.registration.showNotification("Margin Reminder 🔔", {
+        body: text || "Upcoming task deadline.",
+        icon: "/icons/icon-192x192.png",
+        badge: "/icons/icon-192x192.png",
+      })
+    );
+  }
+});
+
 // Handle notification click to bring app to foreground
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const urlToOpen = (event.notification.data && event.notification.data.url) || "/";
+
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
@@ -76,7 +108,7 @@ self.addEventListener("notificationclick", (event) => {
           }
         }
         if (self.clients.openWindow) {
-          return self.clients.openWindow("/");
+          return self.clients.openWindow(urlToOpen);
         }
       })
   );

@@ -114,3 +114,22 @@ BEGIN
         END IF;
     END IF;
 END $$;
+
+-- 8. Web Push Subscriptions Table (for iPhone Lock Screen Notifications via Apple APNs)
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage their own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can manage their own push subscriptions"
+    ON public.push_subscriptions
+    FOR ALL
+    USING (auth.uid() = user_id OR auth.uid() IS NULL);

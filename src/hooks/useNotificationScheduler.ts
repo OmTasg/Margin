@@ -188,6 +188,15 @@ export function useNotificationScheduler({
         }
       }
     });
+
+    // Dispatch background web push for subscribed mobile devices (via Apple APNs)
+    if (typeof window !== "undefined" && tasks.length > 0) {
+      fetch("/api/push/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks }),
+      }).catch(() => {});
+    }
   }, [tasks, settings, isAlreadyNotified, markNotified, onNotifyInApp]);
 
   // Set up intervals and visibility listeners

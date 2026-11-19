@@ -34,6 +34,12 @@ import {
   dispatchTestNotification,
   NotificationPermissionStatus,
 } from "@/lib/notifications";
+import {
+  isPushNotificationSupported,
+  getPushSubscriptionStatus,
+  registerPushSubscription,
+  sendTestPush,
+} from "@/lib/pushClient";
 
 interface Props {
   isOpen: boolean;
@@ -91,6 +97,62 @@ export function SettingsDrawer({
     typeof window !== "undefined" &&
     (window.matchMedia("(display-mode: standalone)").matches ||
       Boolean((window.navigator as any).standalone));
+
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && typeof window !== "undefined") {
+      getPushSubscriptionStatus().then((status) => {
+        setIsPushSubscribed(status.isSubscribed);
+      });
+    }
+  }, [isOpen]);
+
+  const handleEnablePush = async () => {
+    setIsPushLoading(true);
+    setNotificationFeedback(null);
+    try {
+      const res = await registerPushSubscription();
+      if (res.success) {
+        setIsPushSubscribed(true);
+        setNotificationPermission("granted");
+        onUpdateSettings({ notifications_enabled: true });
+        setNotificationFeedback({
+          type: "success",
+          message: "iPhone Lock Screen Push Notifications enabled via Apple APNs! 🎉",
+        });
+      } else {
+        setNotificationFeedback({
+          type: "error",
+          message: res.error || "Failed to enable push notifications.",
+        });
+      }
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setIsPushLoading(true);
+    setNotificationFeedback(null);
+    try {
+      const res = await sendTestPush();
+      if (res.success) {
+        setNotificationFeedback({
+          type: "success",
+          message: "Push notification sent! Check your phone's screen/lock screen right now 🔔",
+        });
+      } else {
+        setNotificationFeedback({
+          type: "error",
+          message: res.error || "Failed to send test push notification.",
+        });
+      }
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
 
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfigDetails());
   const [customSupabaseUrl, setCustomSupabaseUrl] = useState("");
@@ -339,50 +401,94 @@ export function SettingsDrawer({
               Receive native device notifications and chimes when assignments or habits are nearing their due time, even if Margin is in the background.
             </p>
 
-            {/* Notification permission button / actions */}
-            <div className="flex flex-col sm:flex-row items-stretch gap-2 pt-0.5">
-              {notificationPermission !== "granted" ? (
-                <button
-                  type="button"
-                  onClick={handleEnableNotifications}
-                  className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
-                >
-                  <Bell className="w-3.5 h-3.5" />
-                  <span>Enable Device Notifications</span>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleTestNotification}
-                className="flex-1 py-2 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition border border-zinc-200 dark:border-zinc-700"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Test Notification & Chime</span>
-              </button>
+            {/* Phone Lock Screen Push via Apple APNs */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/50 to-indigo-50/30 dark:from-blue-950/20 dark:to-indigo-950/10 border border-blue-200/80 dark:border-blue-900/40 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    Phone Lock Screen Push (Apple APNs)
+                  </span>
+                </div>
+                {isPushSubscribed ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400">
+                    Connected 🟢
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                    Not Active
+                  </span>
+                )}
+              </div>
+
+              <p className="text-zinc-500 dark:text-zinc-400 text-[11px] leading-relaxed">
+                Sends native notifications directly to your iPhone Lock Screen and Apple Watch when assignments or habits are nearing their deadline, even when your phone is locked and Margin is closed.
+              </p>
+
+              {isIOS && !isStandalone && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-[11px] space-y-1">
+                  <span className="font-semibold">📲 Required on iPhone:</span>
+                  <p className="leading-relaxed">
+                    Open Margin in Safari, tap <strong>Share</strong> (square with arrow up) ➔ <strong>&ldquo;Add to Home Screen&rdquo;</strong>, then open the installed Margin app from your home screen to activate push notifications.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row items-stretch gap-2 pt-1">
+                {!isPushSubscribed ? (
+                  <button
+                    type="button"
+                    onClick={handleEnablePush}
+                    disabled={isPushLoading}
+                    className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>{isPushLoading ? "Enabling..." : "Enable iPhone Lock Screen Push"}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleTestPush}
+                    disabled={isPushLoading}
+                    className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{isPushLoading ? "Sending..." : "Send Test Push to Phone 📲"}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* iPhone / iOS Special Guide */}
-            {isIOS && !isStandalone && (
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-[11px] space-y-1">
-                <div className="font-semibold flex items-center gap-1.5">
-                  <span>📲</span>
-                  <span>iPhone / Safari Notification Setup</span>
-                </div>
-                <p className="leading-relaxed">
-                  Apple only allows web notifications if Margin is added to your Home Screen: tap Safari&apos;s <strong>Share</strong> button (square with arrow up) and select <strong>&ldquo;Add to Home Screen&rdquo;</strong>.
-                </p>
+            {/* Laptop / Browser Audio & Banner */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Laptop / Desktop Notifications
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  {notificationPermission === "granted" ? "Allowed" : "Not Allowed"}
+                </span>
               </div>
-            )}
-
-            {/* 100% Guaranteed Lock Screen & Watch Notifications Tip */}
-            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-800 dark:text-blue-300 text-[11px] space-y-1">
-              <div className="font-semibold flex items-center gap-1.5">
-                <span>⏰</span>
-                <span>Lock Screen & Apple Watch Alerts</span>
+              <div className="flex items-center gap-2">
+                {notificationPermission !== "granted" && (
+                  <button
+                    type="button"
+                    onClick={handleEnableNotifications}
+                    className="flex-1 py-2 px-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Bell className="w-3.5 h-3.5" />
+                    <span>Allow Browser Notifications</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleTestNotification}
+                  className="flex-1 py-2 px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition border border-zinc-200 dark:border-zinc-700"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Test Laptop Chime & Banner</span>
+                </button>
               </div>
-              <p className="leading-relaxed">
-                For 100% reliable alerts when your phone is locked or your laptop lid is shut, connect <strong>Google Calendar</strong> below. Reminders will push directly to your device&apos;s native calendar with lock screen alarms.
-              </p>
             </div>
 
             {notificationFeedback && (
