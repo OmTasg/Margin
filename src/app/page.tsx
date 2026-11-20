@@ -401,6 +401,8 @@ export default function Home() {
                 await updateTask(id, { title: newTitle });
               }}
               showToast={addToast}
+              isCloudSyncing={isCloudSyncing}
+              onSyncCloud={syncCloudTasks}
             />
           ) : (
             <TaskList

@@ -296,7 +296,7 @@ export function SettingsDrawer({
                 Settings
               </h2>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
-                v2.1
+                v2.2
               </span>
             </div>
             <p className="text-xs text-zinc-400">Margin preferences & feeds</p>
@@ -1018,20 +1018,24 @@ END $$;`;
             type="button"
             onClick={async () => {
               if (typeof window !== "undefined") {
-                if ("serviceWorker" in navigator) {
-                  try {
+                try {
+                  if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                  if ("serviceWorker" in navigator) {
                     const regs = await navigator.serviceWorker.getRegistrations();
-                    for (const r of regs) await r.update();
-                  } catch {}
-                }
+                    for (const r of regs) await r.unregister();
+                  }
+                } catch {}
                 window.location.reload();
               }
             }}
             className="text-[11px] text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 transition flex items-center gap-1.5 py-1.5 px-2.5 rounded-xl hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60"
-            title="Reload application to fetch latest update"
+            title="Purge cached assets and reload application"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reload & Update App</span>
+            <span>Force Reload & Purge Cache</span>
           </button>
 
           <button

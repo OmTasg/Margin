@@ -1,4 +1,4 @@
-const CACHE_NAME = "margin-cache-v3";
+const CACHE_NAME = "margin-cache-v4";
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",
@@ -36,6 +36,22 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   // Only handle GET requests and skip API requests
   if (event.request.method !== "GET" || event.request.url.includes("/api/")) {
+    return;
+  }
+
+  // For HTML navigation requests, ALWAYS fetch fresh from network to prevent stale PWA builds on iPhone
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((res) => res || caches.match("/")))
+    );
     return;
   }
 

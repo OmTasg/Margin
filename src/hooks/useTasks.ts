@@ -9,6 +9,7 @@ import {
   pushTasksBatchToCloud,
   deleteTaskFromCloud,
   syncTwoWayTasks,
+  extractEmbeddedCategory,
 } from "@/lib/storage/supabaseStore";
 import {
   resolveDirectCanvasUrl,
@@ -97,11 +98,13 @@ export function useTasks(settings: UserSettings) {
 
       // 5. Detect meeting / lecture and category (shopping items always keep shopping category)
       const isMeeting = t.is_lecture_or_meeting ?? isLectureOrMeeting(t);
-      const isShop = t.id?.startsWith("shop-") || t.category === "shopping";
+      const { category: extractedCat, cleanNotes } = extractEmbeddedCategory(t);
+      const isShop = t.id?.startsWith("shop-") || extractedCat === "shopping" || t.category === "shopping";
       const category = isShop ? "shopping" : (t.category || inferTaskCategory(t.title, t.course_name));
 
       cleaned.push({
         ...t,
+        notes: isShop && cleanNotes ? cleanNotes : t.notes,
         priority,
         category,
         is_lecture_or_meeting: isMeeting,
@@ -173,18 +176,20 @@ export function useTasks(settings: UserSettings) {
             { event: "*", schema: "public", table: "tasks" },
             (payload) => {
               if (payload.eventType === "INSERT") {
-                const newTask = payload.new as Task;
-                if (isMoreThanTwoDaysOverdue(newTask.due_date)) return;
-                const directUrl = resolveDirectCanvasUrl(newTask.external_url, newTask.notes, newTask.canvas_uid);
-                const isShop = newTask.id?.startsWith("shop-") || newTask.category === "shopping";
+                const rawTask = payload.new as any;
+                if (isMoreThanTwoDaysOverdue(rawTask.due_date)) return;
+                const directUrl = resolveDirectCanvasUrl(rawTask.external_url, rawTask.notes, rawTask.canvas_uid);
+                const { category: extractedCat, cleanNotes } = extractEmbeddedCategory(rawTask);
+                const isShop = rawTask.id?.startsWith("shop-") || extractedCat === "shopping" || rawTask.category === "shopping";
                 const sanitizedTask: Task = {
-                  ...newTask,
-                  category: isShop ? "shopping" : (newTask.category || "personal"),
-                  external_url: directUrl || newTask.external_url,
+                  ...rawTask,
+                  notes: isShop && cleanNotes ? cleanNotes : rawTask.notes,
+                  category: isShop ? "shopping" : (rawTask.category || "personal"),
+                  external_url: directUrl || rawTask.external_url,
                   priority:
-                    newTask.source === "canvas" && !newTask.is_completed && newTask.due_date
-                      ? calculateCanvasPriority(newTask.due_date)
-                      : newTask.priority,
+                    rawTask.source === "canvas" && !rawTask.is_completed && rawTask.due_date
+                      ? calculateCanvasPriority(rawTask.due_date)
+                      : rawTask.priority,
                 };
 
                 setTasks((prev) => {
@@ -194,21 +199,23 @@ export function useTasks(settings: UserSettings) {
                   return updated;
                 });
               } else if (payload.eventType === "UPDATE") {
-                const updatedItem = payload.new as Task;
-                if (isMoreThanTwoDaysOverdue(updatedItem.due_date)) {
+                const updatedRaw = payload.new as any;
+                if (isMoreThanTwoDaysOverdue(updatedRaw.due_date)) {
                   setTasks((prev) => {
-                    const filtered = prev.filter((t) => t.id !== updatedItem.id);
+                    const filtered = prev.filter((t) => t.id !== updatedRaw.id);
                     saveLocalTasks(filtered);
                     return filtered;
                   });
                   return;
                 }
-                const directUrl = resolveDirectCanvasUrl(updatedItem.external_url, updatedItem.notes, updatedItem.canvas_uid);
-                const isShop = updatedItem.id?.startsWith("shop-") || updatedItem.category === "shopping";
+                const directUrl = resolveDirectCanvasUrl(updatedRaw.external_url, updatedRaw.notes, updatedRaw.canvas_uid);
+                const { category: extractedCat, cleanNotes } = extractEmbeddedCategory(updatedRaw);
+                const isShop = updatedRaw.id?.startsWith("shop-") || extractedCat === "shopping" || updatedRaw.category === "shopping";
                 const sanitizedItem: Task = {
-                  ...updatedItem,
-                  category: isShop ? "shopping" : (updatedItem.category || "personal"),
-                  external_url: directUrl || updatedItem.external_url,
+                  ...updatedRaw,
+                  notes: isShop && cleanNotes ? cleanNotes : updatedRaw.notes,
+                  category: isShop ? "shopping" : (updatedRaw.category || "personal"),
+                  external_url: directUrl || updatedRaw.external_url,
                 };
 
                 setTasks((prev) => {

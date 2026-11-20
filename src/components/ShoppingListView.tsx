@@ -14,6 +14,8 @@ import {
   X,
   Edit2,
   CheckCircle2,
+  RefreshCw,
+  Cloud,
 } from "lucide-react";
 
 interface Props {
@@ -29,6 +31,8 @@ interface Props {
     message: string,
     action?: { label: string; onClick: () => void }
   ) => void;
+  isCloudSyncing?: boolean;
+  onSyncCloud?: () => Promise<void> | void;
 }
 
 export function ShoppingListView({
@@ -40,6 +44,8 @@ export function ShoppingListView({
   onClearCompleted,
   onUpdateTitle,
   showToast,
+  isCloudSyncing,
+  onSyncCloud,
 }: Props) {
   const [quickInput, setQuickInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,6 +170,22 @@ export function ShoppingListView({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          {onSyncCloud && (
+            <button
+              type="button"
+              onClick={async () => {
+                await onSyncCloud();
+                showToast("success", `Shopping list synced with cloud (${activeItems.length} items)`);
+              }}
+              disabled={isCloudSyncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-200/80 dark:bg-zinc-800 hover:bg-zinc-300/80 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold shadow-sm transition active:scale-95 disabled:opacity-50"
+              title="Sync now with cloud"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? "animate-spin text-emerald-500" : ""}`} />
+              <span>{isCloudSyncing ? "Syncing..." : "Sync Cloud"}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsMultiImportOpen(true)}
