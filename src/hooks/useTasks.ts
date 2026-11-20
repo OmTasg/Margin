@@ -95,9 +95,10 @@ export function useTasks(settings: UserSettings) {
         priority = calculateCanvasPriority(t.due_date);
       }
 
-      // 5. Detect meeting / lecture and category
+      // 5. Detect meeting / lecture and category (shopping items always keep shopping category)
       const isMeeting = t.is_lecture_or_meeting ?? isLectureOrMeeting(t);
-      const category = t.category || inferTaskCategory(t.title, t.course_name);
+      const isShop = t.id?.startsWith("shop-") || t.category === "shopping";
+      const category = isShop ? "shopping" : (t.category || inferTaskCategory(t.title, t.course_name));
 
       cleaned.push({
         ...t,
@@ -175,8 +176,10 @@ export function useTasks(settings: UserSettings) {
                 const newTask = payload.new as Task;
                 if (isMoreThanTwoDaysOverdue(newTask.due_date)) return;
                 const directUrl = resolveDirectCanvasUrl(newTask.external_url, newTask.notes, newTask.canvas_uid);
+                const isShop = newTask.id?.startsWith("shop-") || newTask.category === "shopping";
                 const sanitizedTask: Task = {
                   ...newTask,
+                  category: isShop ? "shopping" : (newTask.category || "personal"),
                   external_url: directUrl || newTask.external_url,
                   priority:
                     newTask.source === "canvas" && !newTask.is_completed && newTask.due_date
@@ -201,8 +204,10 @@ export function useTasks(settings: UserSettings) {
                   return;
                 }
                 const directUrl = resolveDirectCanvasUrl(updatedItem.external_url, updatedItem.notes, updatedItem.canvas_uid);
+                const isShop = updatedItem.id?.startsWith("shop-") || updatedItem.category === "shopping";
                 const sanitizedItem: Task = {
                   ...updatedItem,
+                  category: isShop ? "shopping" : (updatedItem.category || "personal"),
                   external_url: directUrl || updatedItem.external_url,
                 };
 
@@ -623,7 +628,7 @@ export function useTasks(settings: UserSettings) {
 
   // Dedicated shopping tasks memo
   const shoppingTasks = useMemo(() => {
-    return tasks.filter((t) => t.category === "shopping");
+    return tasks.filter((t) => t.category === "shopping" || t.id?.startsWith("shop-"));
   }, [tasks]);
 
   const activeShoppingCount = useMemo(() => {
@@ -633,16 +638,45 @@ export function useTasks(settings: UserSettings) {
   // Single shopping item add
   const addShoppingItem = useCallback(
     async (title: string, notes?: string): Promise<Task> => {
-      return addTask({
-        title,
-        notes,
-        category: "shopping",
-        source: "manual",
+      const nowIso = new Date().toISOString();
+      const newId = `shop-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const newTask: Task = {
+        id: newId,
+        title: title.trim(),
+        notes: notes?.trim() || undefined,
         priority: "P2",
         due_date: null,
+        is_completed: false,
+        reminder_lead_time_minutes: settings.default_reminder_lead_time_minutes || 15,
+        estimated_duration_minutes: null,
+        source: "manual",
+        category: "shopping",
+        is_lecture_or_meeting: false,
+        external_url: null,
+        course_name: null,
+        canvas_uid: null,
+        recurrence: null,
+        recurring_parent_id: null,
+        is_pushed_to_google: false,
+        created_at: nowIso,
+        updated_at: nowIso,
+      };
+
+      setTasks((prev) => {
+        const next = [newTask, ...prev.filter((t) => t.id !== newId)];
+        saveLocalTasks(next);
+        return next;
       });
+
+      if (isSupabaseConfigured()) {
+        pushTaskToCloud(newTask).catch((err) =>
+          console.error("[Cloud Sync] Failed to push shopping item:", err)
+        );
+      }
+
+      return newTask;
     },
-    [addTask]
+    [settings]
   );
 
   // Batch add shopping items (for comma-separated multi-import)
@@ -656,7 +690,7 @@ export function useTasks(settings: UserSettings) {
       if (validTitles.length === 0) return [];
 
       const newTasks: Task[] = validTitles.map((title, idx) => ({
-        id: `task-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+        id: `shop-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
         title,
         notes: undefined,
         priority: "P2",
@@ -677,8 +711,10 @@ export function useTasks(settings: UserSettings) {
         updated_at: nowIso,
       }));
 
+      const newIds = new Set(newTasks.map((t) => t.id));
+
       setTasks((prev) => {
-        const next = [...newTasks, ...prev];
+        const next = [...newTasks, ...prev.filter((t) => !newIds.has(t.id))];
         saveLocalTasks(next);
         return next;
       });
@@ -697,14 +733,14 @@ export function useTasks(settings: UserSettings) {
   // Clear completed shopping items
   const clearCompletedShoppingItems = useCallback(async () => {
     const toDelete = tasksRef.current.filter(
-      (t) => t.category === "shopping" && t.is_completed
+      (t) => (t.category === "shopping" || t.id?.startsWith("shop-")) && t.is_completed
     );
     if (toDelete.length === 0) return;
 
-    const idsToDelete = toDelete.map((t) => t.id);
+    const idsToDelete = new Set(toDelete.map((t) => t.id));
 
     setTasks((prev) => {
-      const next = prev.filter((t) => !idsToDelete.includes(t.id));
+      const next = prev.filter((t) => !idsToDelete.has(t.id));
       saveLocalTasks(next);
       return next;
     });
@@ -730,7 +766,7 @@ export function useTasks(settings: UserSettings) {
 
     filteredTasks.forEach((task) => {
       // Exclude pure unscheduled shopping items from main task groupings
-      if (task.category === "shopping" && !task.due_date && selectedCategory !== "shopping") {
+      if ((task.category === "shopping" || task.id?.startsWith("shop-")) && !task.due_date && selectedCategory !== "shopping") {
         return;
       }
 

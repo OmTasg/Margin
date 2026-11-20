@@ -51,9 +51,9 @@ export function ShoppingListView({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Filter shopping items
+  // Filter shopping items (matches category or dedicated shop- prefix)
   const shoppingItems = useMemo(() => {
-    return tasks.filter((t) => t.category === "shopping");
+    return tasks.filter((t) => t.category === "shopping" || t.id?.startsWith("shop-"));
   }, [tasks]);
 
   const activeItems = useMemo(() => {

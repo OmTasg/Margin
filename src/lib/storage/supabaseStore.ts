@@ -15,6 +15,7 @@ export interface SyncResult {
  * with older Supabase tables that haven't run the latest migrations.
  */
 function toBasePayload(task: Task) {
+  const isShop = task.id?.startsWith("shop-") || task.category === "shopping";
   return {
     id: task.id,
     title: task.title,
@@ -26,6 +27,7 @@ function toBasePayload(task: Task) {
     reminder_lead_time_minutes: task.reminder_lead_time_minutes || 15,
     estimated_duration_minutes: task.estimated_duration_minutes || null,
     source: task.source || "manual",
+    category: isShop ? "shopping" : (task.category || "personal"),
     course_name: task.course_name || null,
     external_url: task.external_url || null,
     created_at: task.created_at || new Date().toISOString(),
@@ -191,13 +193,19 @@ export async function syncTwoWayTasks(localTasks: Task[]): Promise<SyncResult> {
     for (const rt of remoteTasks) {
       const local = taskMap.get(rt.id);
       if (!local) {
-        taskMap.set(rt.id, rt);
+        const isShop = rt.id?.startsWith("shop-") || rt.category === "shopping";
+        taskMap.set(rt.id, isShop ? { ...rt, category: "shopping" } : rt);
         pulledCount++;
       } else {
         const remoteTime = new Date(rt.updated_at || 0).getTime();
         const localTime = new Date(local.updated_at || 0).getTime();
         if (remoteTime >= localTime) {
-          taskMap.set(rt.id, rt);
+          const isShop =
+            rt.id?.startsWith("shop-") ||
+            local.id?.startsWith("shop-") ||
+            local.category === "shopping" ||
+            rt.category === "shopping";
+          taskMap.set(rt.id, isShop ? { ...rt, category: "shopping" } : rt);
         }
       }
     }
