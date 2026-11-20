@@ -621,6 +621,101 @@ export function useTasks(settings: UserSettings) {
     selectedCategory,
   ]);
 
+  // Dedicated shopping tasks memo
+  const shoppingTasks = useMemo(() => {
+    return tasks.filter((t) => t.category === "shopping");
+  }, [tasks]);
+
+  const activeShoppingCount = useMemo(() => {
+    return shoppingTasks.filter((t) => !t.is_completed).length;
+  }, [shoppingTasks]);
+
+  // Single shopping item add
+  const addShoppingItem = useCallback(
+    async (title: string, notes?: string): Promise<Task> => {
+      return addTask({
+        title,
+        notes,
+        category: "shopping",
+        source: "manual",
+        priority: "P2",
+        due_date: null,
+      });
+    },
+    [addTask]
+  );
+
+  // Batch add shopping items (for comma-separated multi-import)
+  const addShoppingItemsBatch = useCallback(
+    async (titles: string[]): Promise<Task[]> => {
+      const nowIso = new Date().toISOString();
+      const validTitles = titles
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+
+      if (validTitles.length === 0) return [];
+
+      const newTasks: Task[] = validTitles.map((title, idx) => ({
+        id: `task-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+        title,
+        notes: undefined,
+        priority: "P2",
+        due_date: null,
+        is_completed: false,
+        reminder_lead_time_minutes: settings.default_reminder_lead_time_minutes || 15,
+        estimated_duration_minutes: null,
+        source: "manual",
+        category: "shopping",
+        is_lecture_or_meeting: false,
+        external_url: null,
+        course_name: null,
+        canvas_uid: null,
+        recurrence: null,
+        recurring_parent_id: null,
+        is_pushed_to_google: false,
+        created_at: nowIso,
+        updated_at: nowIso,
+      }));
+
+      setTasks((prev) => {
+        const next = [...newTasks, ...prev];
+        saveLocalTasks(next);
+        return next;
+      });
+
+      if (isSupabaseConfigured()) {
+        pushTasksBatchToCloud(newTasks).catch((err) =>
+          console.error("[Cloud Sync] Failed to batch push shopping items:", err)
+        );
+      }
+
+      return newTasks;
+    },
+    [settings]
+  );
+
+  // Clear completed shopping items
+  const clearCompletedShoppingItems = useCallback(async () => {
+    const toDelete = tasksRef.current.filter(
+      (t) => t.category === "shopping" && t.is_completed
+    );
+    if (toDelete.length === 0) return;
+
+    const idsToDelete = toDelete.map((t) => t.id);
+
+    setTasks((prev) => {
+      const next = prev.filter((t) => !idsToDelete.includes(t.id));
+      saveLocalTasks(next);
+      return next;
+    });
+
+    if (isSupabaseConfigured()) {
+      idsToDelete.forEach((id) => {
+        deleteTaskFromCloud(id).catch(() => {});
+      });
+    }
+  }, []);
+
   // Grouped active tasks
   const groupedTasks = useMemo(() => {
     const overdue: Task[] = [];
@@ -634,6 +729,11 @@ export function useTasks(settings: UserSettings) {
     const startOfToday = startOfDay(now);
 
     filteredTasks.forEach((task) => {
+      // Exclude pure unscheduled shopping items from main task groupings
+      if (task.category === "shopping" && !task.due_date && selectedCategory !== "shopping") {
+        return;
+      }
+
       if (task.is_completed) {
         completed.push(task);
         return;
@@ -725,6 +825,8 @@ export function useTasks(settings: UserSettings) {
     setSortBy,
     availableCourses,
     groupedTasks,
+    shoppingTasks,
+    activeShoppingCount,
     isCloudSyncing,
     cloudSyncError,
     lastCloudSyncAt,
@@ -736,5 +838,8 @@ export function useTasks(settings: UserSettings) {
     pushTaskToGCal,
     batchPushAllToGCal,
     setTasksFromCanvasSync,
+    addShoppingItem,
+    addShoppingItemsBatch,
+    clearCompletedShoppingItems,
   };
 }

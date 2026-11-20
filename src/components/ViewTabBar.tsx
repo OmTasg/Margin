@@ -9,6 +9,7 @@ import {
   Layers,
   CheckCircle2,
   Plus,
+  ShoppingCart,
 } from "lucide-react";
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
     today: number;
     upcoming: number;
     all: number;
+    shopping?: number;
     completed: number;
   };
   onOpenNewTask: () => void;
@@ -61,12 +63,20 @@ export function ViewTabBar({
       hotkey: "3",
     },
     {
+      id: "shopping",
+      label: "Shopping",
+      shortLabel: "Shopping",
+      icon: <ShoppingCart className="w-3.5 h-3.5 text-emerald-500" />,
+      count: counts.shopping,
+      hotkey: "4",
+    },
+    {
       id: "all",
       label: "All Tasks",
       shortLabel: "All",
       icon: <Layers className="w-3.5 h-3.5 text-zinc-400" />,
       count: counts.all,
-      hotkey: "4",
+      hotkey: "5",
     },
     {
       id: "completed",
@@ -74,15 +84,15 @@ export function ViewTabBar({
       shortLabel: "Done",
       icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
       count: counts.completed > 0 ? counts.completed : undefined,
-      hotkey: "5",
+      hotkey: "6",
     },
   ];
 
   return (
     <div>
-      {/* Mobile-Optimized 5-Column Segmented Tab Bar (Zero horizontal scroll) */}
+      {/* Mobile-Optimized 6-Column Segmented Tab Bar */}
       <div className="sm:hidden space-y-2.5 mb-4">
-        <div className="grid grid-cols-5 p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/60 shadow-inner">
+        <div className="grid grid-cols-6 p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/60 shadow-inner">
           {tabs.map((tab) => {
             const isActive = currentView === tab.id;
             return (

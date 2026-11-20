@@ -5,7 +5,7 @@ import { Task, UserSettings } from "@/lib/types";
 import { TaskCard } from "./TaskCard";
 import { ChevronDown, ChevronRight, CheckCircle2, Clock, Calendar, Check } from "lucide-react";
 
-export type ViewTab = "today" | "upcoming" | "calendar" | "all" | "completed";
+export type ViewTab = "today" | "upcoming" | "calendar" | "shopping" | "all" | "completed";
 
 interface Props {
   groupedTasks: {

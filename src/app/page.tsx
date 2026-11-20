@@ -14,6 +14,7 @@ import { TaskEditModal } from "@/components/TaskEditModal";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
 import { ToastContainer, ToastMessage } from "@/components/Toast";
+import { ShoppingListView } from "@/components/ShoppingListView";
 import { Task } from "@/lib/types";
 import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
 import { Bell } from "lucide-react";
@@ -53,6 +54,8 @@ export default function Home() {
     setSortBy,
     availableCourses,
     groupedTasks,
+    shoppingTasks,
+    activeShoppingCount,
     isCloudSyncing,
     cloudSyncError,
     syncCloudTasks,
@@ -63,6 +66,9 @@ export default function Home() {
     pushTaskToGCal,
     batchPushAllToGCal,
     setTasksFromCanvasSync,
+    addShoppingItem,
+    addShoppingItemsBatch,
+    clearCompletedShoppingItems,
   } = useTasks(settings);
 
   // View Navigation: "today" | "upcoming" | "calendar" | "all" | "completed"
@@ -190,8 +196,11 @@ export default function Home() {
         setCurrentView("calendar");
       } else if (e.key === "4") {
         e.preventDefault();
-        setCurrentView("all");
+        setCurrentView("shopping");
       } else if (e.key === "5") {
+        e.preventDefault();
+        setCurrentView("all");
+      } else if (e.key === "6") {
         e.preventDefault();
         setCurrentView("completed");
       } else if (e.key === "/") {
@@ -290,6 +299,7 @@ export default function Home() {
             counts={{
               today: groupedTasks.today.length + groupedTasks.overdue.length,
               upcoming: groupedTasks.tomorrow.length + groupedTasks.later.length,
+              shopping: activeShoppingCount,
               all: groupedTasks.totalActiveCount,
               completed: groupedTasks.completed.length,
             }}
@@ -337,7 +347,7 @@ export default function Home() {
           )}
 
           {/* Filter Bar (Multi-Select Classes, Categories, Hide Zoom Lectures, Priorities, Sort) */}
-          {currentView !== "calendar" && (
+          {currentView !== "calendar" && currentView !== "shopping" && (
             <FilterBar
               selectedPriorities={selectedPriorities}
               onTogglePriority={togglePriorityFilter}
@@ -359,7 +369,7 @@ export default function Home() {
             />
           )}
 
-          {/* Dynamic Content: Calendar View vs Tabbed Task List */}
+          {/* Dynamic Content: Calendar View vs Shopping List vs Tabbed Task List */}
           {currentView === "calendar" ? (
             <CalendarView
               tasks={tasks}
@@ -372,6 +382,25 @@ export default function Home() {
                 setNewTaskInitialDate(date);
                 setIsNewTaskOpen(true);
               }}
+            />
+          ) : currentView === "shopping" ? (
+            <ShoppingListView
+              tasks={tasks}
+              onToggleComplete={handleToggleTask}
+              onAddItem={addShoppingItem}
+              onAddBatch={addShoppingItemsBatch}
+              onDelete={async (id) => {
+                await deleteTask(id);
+                addToast("info", "Item removed");
+              }}
+              onClearCompleted={async () => {
+                await clearCompletedShoppingItems();
+                addToast("info", "Cleared all bought items");
+              }}
+              onUpdateTitle={async (id, newTitle) => {
+                await updateTask(id, { title: newTitle });
+              }}
+              showToast={addToast}
             />
           ) : (
             <TaskList
