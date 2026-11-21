@@ -121,7 +121,18 @@ export function NewTaskModal({
     } else if (selectedDateMode === "tomorrow") {
       targetDate = addDays(new Date(), 1);
     } else if (selectedDateMode === "weekend") {
-      targetDate = nextFriday(new Date());
+      const now = new Date();
+      const day = now.getDay(); // 0: Sun, 5: Fri, 6: Sat
+      if (day === 5) {
+        // Today is Friday -> Weekend is tomorrow (Saturday)
+        targetDate = addDays(now, 1);
+      } else if (day === 6 || day === 0) {
+        // Today is Sat or Sun -> Weekend is today
+        targetDate = now;
+      } else {
+        // Mon-Thu -> upcoming Saturday
+        targetDate = addDays(now, 6 - day);
+      }
     } else if (selectedDateMode === "next_week") {
       targetDate = nextMonday(new Date());
     } else if (selectedDateMode === "custom") {

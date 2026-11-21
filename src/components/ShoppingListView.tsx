@@ -57,9 +57,15 @@ export function ShoppingListView({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Filter shopping items (matches category or dedicated shop- prefix)
+  // Filter shopping items (matches category, dedicated shop- prefix, or embedded tag)
   const shoppingItems = useMemo(() => {
-    return tasks.filter((t) => t.category === "shopping" || t.id?.startsWith("shop-"));
+    return tasks.filter(
+      (t) =>
+        t.category === "shopping" ||
+        t.id?.startsWith("shop-") ||
+        (t.notes?.includes("[category:shopping]") ?? false) ||
+        (t.notes?.includes("[shopping]") ?? false)
+    );
   }, [tasks]);
 
   const activeItems = useMemo(() => {

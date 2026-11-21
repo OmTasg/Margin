@@ -337,11 +337,7 @@ export function useTasks(settings: UserSettings) {
       const finalCourse = taskData.course_name ? taskData.course_name.toUpperCase() : null;
       const finalCategory =
         taskData.category || inferTaskCategory(taskData.title?.trim() || "", finalCourse);
-      const isMeeting = isLectureOrMeeting({
-        title: taskData.title,
-        notes: taskData.notes,
-        course_name: finalCourse,
-      });
+      const isMeeting = Boolean(taskData.is_lecture_or_meeting);
 
       const newTask: Task = {
         id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -365,9 +361,12 @@ export function useTasks(settings: UserSettings) {
         updated_at: nowIso,
       };
 
-      // Optimistic state update
-      const updatedList = [newTask, ...tasks];
-      commitTasks(updatedList);
+      // Optimistic state update with functional updater
+      setTasks((prev) => {
+        const next = [newTask, ...prev.filter((t) => t.id !== newTask.id)];
+        saveLocalTasks(next);
+        return next;
+      });
 
       // Cloud sync with resilient schema fallback
       if (isSupabaseConfigured()) {
@@ -591,8 +590,12 @@ export function useTasks(settings: UserSettings) {
         if (!matchTitle && !matchNotes && !matchCourse) return false;
       }
 
-      // 2. Hide virtual classes / Zoom lectures if toggle is active
-      if (hideVirtualClasses && (task.is_lecture_or_meeting || isLectureOrMeeting(task))) {
+      // 2. Hide virtual classes / Zoom lectures if toggle is active (ONLY for canvas-imported feed items)
+      if (
+        hideVirtualClasses &&
+        task.source === "canvas" &&
+        (task.is_lecture_or_meeting || isLectureOrMeeting(task))
+      ) {
         return false;
       }
 
@@ -635,7 +638,13 @@ export function useTasks(settings: UserSettings) {
 
   // Dedicated shopping tasks memo
   const shoppingTasks = useMemo(() => {
-    return tasks.filter((t) => t.category === "shopping" || t.id?.startsWith("shop-"));
+    return tasks.filter(
+      (t) =>
+        t.category === "shopping" ||
+        t.id?.startsWith("shop-") ||
+        (t.notes?.includes("[category:shopping]") ?? false) ||
+        (t.notes?.includes("[shopping]") ?? false)
+    );
   }, [tasks]);
 
   const activeShoppingCount = useMemo(() => {

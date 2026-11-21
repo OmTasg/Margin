@@ -121,7 +121,7 @@ export function CalendarView({
 
   // Total lecture count across all tasks
   const totalLecturesCount = useMemo(() => {
-    return tasks.filter((t) => t.is_lecture_or_meeting || isLectureOrMeeting(t))
+    return tasks.filter((t) => t.source === "canvas" && (t.is_lecture_or_meeting || isLectureOrMeeting(t)))
       .length;
   }, [tasks]);
 
@@ -130,7 +130,7 @@ export function CalendarView({
     const map = new Map<string, Task[]>();
     tasks.forEach((task) => {
       if (!task.due_date) return;
-      const isMeeting = task.is_lecture_or_meeting || isLectureOrMeeting(task);
+      const isMeeting = task.source === "canvas" && (task.is_lecture_or_meeting || isLectureOrMeeting(task));
       if (effectiveHideLectures && isMeeting) return;
 
       const d = new Date(task.due_date);
@@ -151,7 +151,7 @@ export function CalendarView({
       const d = new Date(t.due_date);
       if (isNaN(d.getTime())) return false;
       if (format(d, "yyyy-MM-dd") !== dayKey) return false;
-      return t.is_lecture_or_meeting || isLectureOrMeeting(t);
+      return t.source === "canvas" && (t.is_lecture_or_meeting || isLectureOrMeeting(t));
     }).length;
   }, [selectedDay, tasks, effectiveHideLectures]);
 
@@ -362,7 +362,7 @@ export function CalendarView({
                     <div className="hidden md:block mt-1 space-y-1 flex-1 overflow-hidden">
                       {dayTasks.slice(0, 3).map((task) => {
                         const isMeeting =
-                          task.is_lecture_or_meeting || isLectureOrMeeting(task);
+                          task.source === "canvas" && (task.is_lecture_or_meeting || isLectureOrMeeting(task));
 
                         return (
                           <div
@@ -562,7 +562,7 @@ export function CalendarView({
                       task.canvas_uid
                     ) || task.external_url;
                   const isMeeting =
-                    task.is_lecture_or_meeting || isLectureOrMeeting(task);
+                    task.source === "canvas" && (task.is_lecture_or_meeting || isLectureOrMeeting(task));
                   const category = (task.category ||
                     inferTaskCategory(
                       task.title,

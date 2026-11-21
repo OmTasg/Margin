@@ -74,7 +74,11 @@ export function isLectureOrMeeting(task: {
   course_name?: string | null;
   canvas_uid?: string | null;
   external_url?: string | null;
+  source?: string;
 }): boolean {
+  // Manual tasks created by the user are always actionable to-dos and must NEVER be hidden as recurring meetings
+  if (task.source === "manual") return false;
+
   const notes = (task.notes || "").toLowerCase();
   const title = (task.title || "").toLowerCase();
   const course = (task.course_name || "").toLowerCase();

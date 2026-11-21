@@ -296,7 +296,7 @@ export function SettingsDrawer({
                 Settings
               </h2>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
-                v2.2
+                v2.3
               </span>
             </div>
             <p className="text-xs text-zinc-400">Margin preferences & feeds</p>

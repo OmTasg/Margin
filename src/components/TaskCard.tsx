@@ -62,7 +62,7 @@ export function TaskCard({
 
   const dueInfo = formatDueDisplay(task.due_date);
   const directCanvasUrl = resolveDirectCanvasUrl(task.external_url, task.notes, task.canvas_uid) || task.external_url;
-  const isMeeting = task.is_lecture_or_meeting || isLectureOrMeeting(task);
+  const isMeeting = task.source === "canvas" && (task.is_lecture_or_meeting || isLectureOrMeeting(task));
   const category = (task.category || inferTaskCategory(task.title, task.course_name)) as TaskCategory;
   const categoryConfig = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.personal;
 

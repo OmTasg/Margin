@@ -125,7 +125,9 @@ export function TaskList({
                 All clear for Today
               </p>
               <p className="text-xs mt-1 text-zinc-400">
-                You have no tasks or assignments due today.
+                {tomorrow.length > 0
+                  ? `You have ${tomorrow.length} task${tomorrow.length > 1 ? "s" : ""} scheduled for Tomorrow.`
+                  : "You have no tasks or assignments due today."}
               </p>
               <button
                 type="button"
@@ -136,6 +138,31 @@ export function TaskList({
               </button>
             </div>
           )
+        )}
+
+        {/* Anytime / Unscheduled Tasks in Today view so manual tasks never get lost */}
+        {noDueDate.length > 0 && (
+          <section className="pt-4 border-t border-zinc-200/60 dark:border-zinc-800/60">
+            <div className="flex items-center gap-2 pb-2 text-xs font-semibold tracking-wider uppercase text-zinc-400 dark:text-zinc-500">
+              <span>Anytime / Unscheduled</span>
+              <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                {noDueDate.length}
+              </span>
+            </div>
+            <div>
+              {noDueDate.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  settings={settings}
+                  onToggleComplete={onToggleComplete}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onPushToGCal={onPushToGCal}
+                />
+              ))}
+            </div>
+          </section>
         )}
       </div>
     );

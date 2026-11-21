@@ -18,6 +18,7 @@ import { ShoppingListView } from "@/components/ShoppingListView";
 import { Task } from "@/lib/types";
 import { useNotificationScheduler } from "@/hooks/useNotificationScheduler";
 import { Bell } from "lucide-react";
+import { format, isToday, isTomorrow } from "date-fns";
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
@@ -253,10 +254,38 @@ export default function Home() {
     return res;
   };
 
-  // Add Task handler with toast
+  // Add Task handler with contextual feedback & one-click navigation
   const handleAddTaskWithToast = async (taskData: Partial<Task>) => {
     const t = await addTask(taskData);
-    addToast("success", `Created "${t.title}"`);
+    if (t.category === "shopping" || t.id.startsWith("shop-")) {
+      addToast("success", `Added "${t.title}" to Shopping List`, {
+        label: "View Shopping",
+        onClick: () => setCurrentView("shopping"),
+      });
+    } else if (!t.due_date) {
+      addToast("success", `Created "${t.title}" (Anytime)`, {
+        label: "View All",
+        onClick: () => setCurrentView("all"),
+      });
+    } else {
+      const d = new Date(t.due_date);
+      if (isToday(d)) {
+        addToast("success", `Created "${t.title}" for Today`);
+        if (currentView !== "today" && currentView !== "calendar") {
+          setCurrentView("today");
+        }
+      } else if (isTomorrow(d)) {
+        addToast("success", `Created "${t.title}" for Tomorrow`, {
+          label: "View in Upcoming",
+          onClick: () => setCurrentView("upcoming"),
+        });
+      } else {
+        addToast("success", `Created "${t.title}" for ${format(d, "EEE, MMM d")}`, {
+          label: "View in Calendar",
+          onClick: () => setCurrentView("calendar"),
+        });
+      }
+    }
     return t;
   };
 
