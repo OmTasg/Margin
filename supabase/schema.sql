@@ -55,6 +55,15 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Idempotent column additions for existing tables without latest migrations:
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'personal';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_lecture_or_meeting BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence JSONB;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurring_parent_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS google_event_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS google_calendar_id TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_pushed_to_google BOOLEAN DEFAULT FALSE;
+
 -- 4. Create Indexes for High-Performance Queries
 CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON public.tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON public.tasks(due_date);
