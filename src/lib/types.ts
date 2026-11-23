@@ -56,10 +56,20 @@ export interface Task {
   updated_at: string;
 }
 
+export interface UpcomingDayGroup {
+  date: Date;
+  dateKey: string;
+  label: string;
+  shortLabel: string;
+  isTomorrow: boolean;
+  tasks: Task[];
+}
+
 export interface UserSettings {
   id?: string;
   user_id?: string;
   default_reminder_lead_time_minutes: number; // default 15
+  today_view_lookahead_days?: number; // default 3 (e.g. 0 for today only, 1, 2, 3, 5, 7)
   canvas_ics_url: string;
   canvas_last_synced_at?: string | null;
   canvas_open_in_app?: boolean; // open Canvas assignment links directly in native Canvas Student app on mobile

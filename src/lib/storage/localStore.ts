@@ -2,6 +2,7 @@ import { Task, UserSettings } from "../types";
 
 export const DEFAULT_SETTINGS: UserSettings = {
   default_reminder_lead_time_minutes: 15,
+  today_view_lookahead_days: 3,
   canvas_ics_url: "",
   canvas_last_synced_at: null,
   canvas_open_in_app: true,

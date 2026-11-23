@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Task, UserSettings } from "@/lib/types";
+import { Task, UserSettings, UpcomingDayGroup } from "@/lib/types";
 import { TaskCard } from "./TaskCard";
 import { ChevronDown, ChevronRight, CheckCircle2, Clock, Calendar, Check } from "lucide-react";
+import { format } from "date-fns";
 
 export type ViewTab = "today" | "upcoming" | "calendar" | "shopping" | "all" | "completed";
 
@@ -15,6 +16,8 @@ interface Props {
     later: Task[];
     noDueDate: Task[];
     completed: Task[];
+    lookaheadDays?: number;
+    upcomingDays?: UpcomingDayGroup[];
     totalActiveCount: number;
   };
   currentView: ViewTab;
@@ -38,8 +41,19 @@ export function TaskList({
 }: Props) {
   const [showCompletedInAll, setShowCompletedInAll] = useState(false);
 
-  const { overdue, today, tomorrow, later, noDueDate, completed, totalActiveCount } =
-    groupedTasks;
+  const {
+    overdue,
+    today,
+    tomorrow,
+    later,
+    noDueDate,
+    completed,
+    lookaheadDays = typeof settings.today_view_lookahead_days === "number"
+      ? settings.today_view_lookahead_days
+      : 3,
+    upcomingDays = [],
+    totalActiveCount,
+  } = groupedTasks;
 
   if (totalActiveCount === 0 && completed.length === 0) {
     return (
@@ -63,6 +77,8 @@ export function TaskList({
   // --- View: TODAY ---
   if (currentView === "today") {
     const hasTodayOrOverdue = overdue.length > 0 || today.length > 0;
+    const upcomingWithTasks = upcomingDays.filter((d) => d.tasks.length > 0);
+    const totalLookaheadTasks = upcomingWithTasks.reduce((acc, d) => acc + d.tasks.length, 0);
 
     return (
       <div className="space-y-6 pb-20">
@@ -119,25 +135,85 @@ export function TaskList({
           </section>
         ) : (
           !hasTodayOrOverdue && (
-            <div className="py-16 text-center text-zinc-400 dark:text-zinc-500">
-              <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-emerald-500/80 stroke-1" />
-              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                All clear for Today
-              </p>
-              <p className="text-xs mt-1 text-zinc-400">
-                {tomorrow.length > 0
-                  ? `You have ${tomorrow.length} task${tomorrow.length > 1 ? "s" : ""} scheduled for Tomorrow.`
-                  : "You have no tasks or assignments due today."}
-              </p>
-              <button
-                type="button"
-                onClick={onOpenNewTask}
-                className="mt-4 px-4 py-1.5 text-xs font-semibold rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition shadow-sm"
-              >
-                + Add a Task for Today
-              </button>
-            </div>
+            lookaheadDays > 0 && totalLookaheadTasks > 0 ? (
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/70 dark:border-emerald-900/40 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>All clear for today</span>
+                  <span className="text-emerald-600/80 dark:text-emerald-400/80 hidden sm:inline">
+                    · Here is your radar for the next {lookaheadDays} day{lookaheadDays > 1 ? "s" : ""}:
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenNewTask}
+                  className="text-xs px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium transition shadow-sm"
+                >
+                  + Add for Today
+                </button>
+              </div>
+            ) : (
+              <div className="py-16 text-center text-zinc-400 dark:text-zinc-500">
+                <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-emerald-500/80 stroke-1" />
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                  {lookaheadDays > 0
+                    ? `All clear for today and the next ${lookaheadDays} day${lookaheadDays > 1 ? "s" : ""}`
+                    : "All clear for Today"}
+                </p>
+                <p className="text-xs mt-1 text-zinc-400">
+                  You have no tasks or assignments on your immediate radar.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenNewTask}
+                  className="mt-4 px-4 py-1.5 text-xs font-semibold rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 transition shadow-sm"
+                >
+                  + Add a Task
+                </button>
+              </div>
+            )
           )
+        )}
+
+        {/* Rolling Lookahead Radar (Next N Days) */}
+        {lookaheadDays > 0 && totalLookaheadTasks > 0 && (
+          <section className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-4">
+            <div className="flex items-center justify-between pb-1 text-xs font-semibold tracking-wider uppercase text-zinc-700 dark:text-zinc-300">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                <span>Next {lookaheadDays} Days</span>
+              </span>
+              <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+                {totalLookaheadTasks}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {upcomingWithTasks.map((dayGroup) => (
+                <div key={dayGroup.dateKey} className="space-y-1">
+                  <div className="flex items-center gap-2 px-1 py-1 text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
+                    <span className="text-zinc-700 dark:text-zinc-200 font-semibold">{dayGroup.label}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                      {dayGroup.tasks.length}
+                    </span>
+                  </div>
+                  <div>
+                    {dayGroup.tasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        settings={settings}
+                        onToggleComplete={onToggleComplete}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onPushToGCal={onPushToGCal}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Anytime / Unscheduled Tasks in Today view so manual tasks never get lost */}

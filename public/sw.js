@@ -1,4 +1,4 @@
-const CACHE_NAME = "margin-cache-v5";
+const CACHE_NAME = "margin-cache-v6";
 const ASSETS_TO_CACHE = [
   "/",
   "/manifest.json",

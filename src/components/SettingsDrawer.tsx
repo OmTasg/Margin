@@ -237,6 +237,15 @@ export function SettingsDrawer({
     { label: "1d before", value: 1440 },
   ];
 
+  const lookaheadPresets = [
+    { label: "Today only", value: 0 },
+    { label: "+ 1 Day", value: 1 },
+    { label: "+ 2 Days", value: 2 },
+    { label: "+ 3 Days (Default)", value: 3 },
+    { label: "+ 5 Days", value: 5 },
+    { label: "+ 7 Days (Week)", value: 7 },
+  ];
+
   const handleReminderChange = (val: number) => {
     setIsCustomReminder(false);
     onUpdateSettings({ default_reminder_lead_time_minutes: val });
@@ -296,7 +305,7 @@ export function SettingsDrawer({
                 Settings
               </h2>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
-                v2.3
+                v2.4
               </span>
             </div>
             <p className="text-xs text-zinc-400">Margin preferences & feeds</p>
@@ -375,6 +384,47 @@ export function SettingsDrawer({
                 </button>
               </div>
             )}
+          </div>
+
+          <hr className="border-zinc-200/80 dark:border-zinc-800/80" />
+
+          {/* SECTION: Today View Horizon */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 font-medium">
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                <span>Today View Horizon</span>
+              </div>
+              <span className="text-[11px] font-mono text-zinc-400">
+                {(settings.today_view_lookahead_days ?? 3) === 0
+                  ? "Today only"
+                  : `+${settings.today_view_lookahead_days ?? 3} days`}
+              </span>
+            </div>
+            <p className="text-zinc-400 leading-relaxed text-[11px]">
+              Choose how many upcoming days appear in your Today view for a rolling radar of upcoming deadlines.
+            </p>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              {lookaheadPresets.map((opt) => {
+                const currentVal = settings.today_view_lookahead_days ?? 3;
+                const isSelected = currentVal === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onUpdateSettings({ today_view_lookahead_days: opt.value })}
+                    className={`py-1.5 px-2 text-xs rounded-lg border transition ${
+                      isSelected
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold border-transparent"
+                        : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />

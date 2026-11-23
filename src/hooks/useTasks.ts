@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Task, UserSettings, Priority, TaskSource, SortOption, TaskCategory } from "@/lib/types";
+import { Task, UserSettings, Priority, TaskSource, SortOption, TaskCategory, UpcomingDayGroup } from "@/lib/types";
 import { getLocalTasks, saveLocalTasks } from "@/lib/storage/localStore";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/client";
 import {
@@ -19,7 +19,7 @@ import {
   inferTaskCategory,
 } from "@/lib/canvasUtils";
 import { calculateNextTaskOccurrence } from "@/lib/recurrenceUtils";
-import { isToday, isTomorrow, isPast, startOfDay } from "date-fns";
+import { isToday, isTomorrow, isPast, startOfDay, addDays, isSameDay, format } from "date-fns";
 
 export function useTasks(settings: UserSettings) {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -842,6 +842,42 @@ export function useTasks(settings: UserSettings) {
       return bTime - aTime;
     });
 
+    const lookaheadDays =
+      typeof settings.today_view_lookahead_days === "number"
+        ? settings.today_view_lookahead_days
+        : 3;
+
+    const upcomingDays: UpcomingDayGroup[] = [];
+    if (lookaheadDays > 0) {
+      for (let i = 1; i <= lookaheadDays; i++) {
+        const targetDate = addDays(startOfToday, i);
+        const dayTasks: Task[] = [];
+
+        [...tomorrow, ...later].forEach((t) => {
+          if (t.due_date && isSameDay(new Date(t.due_date), targetDate)) {
+            dayTasks.push(t);
+          }
+        });
+
+        dayTasks.sort(sorter);
+
+        const isTom = i === 1;
+        const dateKey = format(targetDate, "yyyy-MM-dd");
+        const fullDateStr = format(targetDate, "EEEE, MMM d");
+        const label = isTom ? `Tomorrow · ${fullDateStr}` : fullDateStr;
+        const shortLabel = isTom ? "Tomorrow" : format(targetDate, "EEE, MMM d");
+
+        upcomingDays.push({
+          date: targetDate,
+          dateKey,
+          label,
+          shortLabel,
+          isTomorrow: isTom,
+          tasks: dayTasks,
+        });
+      }
+    }
+
     return {
       overdue,
       today,
@@ -849,9 +885,11 @@ export function useTasks(settings: UserSettings) {
       later,
       noDueDate,
       completed,
+      lookaheadDays,
+      upcomingDays,
       totalActiveCount: overdue.length + today.length + tomorrow.length + later.length + noDueDate.length,
     };
-  }, [filteredTasks, sortBy]);
+  }, [filteredTasks, sortBy, settings.today_view_lookahead_days]);
 
   return {
     tasks,
