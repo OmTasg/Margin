@@ -76,6 +76,8 @@ export function SettingsDrawer({
   const [showCanvasHelp, setShowCanvasHelp] = useState(false);
   const [customReminderMins, setCustomReminderMins] = useState<string>("");
   const [isCustomReminder, setIsCustomReminder] = useState(false);
+  const [customHorizonDays, setCustomHorizonDays] = useState<string>("");
+  const [isCustomHorizon, setIsCustomHorizon] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIos, setIsIos] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -246,6 +248,18 @@ export function SettingsDrawer({
     { label: "+ 7 Days (Week)", value: 7 },
   ];
 
+  const isCustomReminderActive =
+    isCustomReminder ||
+    !reminderPresets.some(
+      (opt) => opt.value === settings.default_reminder_lead_time_minutes
+    );
+
+  const isCustomHorizonActive =
+    isCustomHorizon ||
+    !lookaheadPresets.some(
+      (opt) => opt.value === (settings.today_view_lookahead_days ?? 3)
+    );
+
   const handleReminderChange = (val: number) => {
     setIsCustomReminder(false);
     onUpdateSettings({ default_reminder_lead_time_minutes: val });
@@ -257,6 +271,20 @@ export function SettingsDrawer({
       onUpdateSettings({ default_reminder_lead_time_minutes: mins });
       setIsCustomReminder(false);
       setCustomReminderMins("");
+    }
+  };
+
+  const handleHorizonChange = (val: number) => {
+    setIsCustomHorizon(false);
+    onUpdateSettings({ today_view_lookahead_days: val });
+  };
+
+  const handleCustomHorizonSubmit = () => {
+    const days = parseInt(customHorizonDays, 10);
+    if (!isNaN(days) && days >= 0 && days <= 365) {
+      onUpdateSettings({ today_view_lookahead_days: days });
+      setIsCustomHorizon(false);
+      setCustomHorizonDays("");
     }
   };
 
@@ -305,7 +333,7 @@ export function SettingsDrawer({
                 Settings
               </h2>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
-                v2.4
+                v2.5
               </span>
             </div>
             <p className="text-xs text-zinc-400">Margin preferences & feeds</p>
@@ -333,7 +361,7 @@ export function SettingsDrawer({
             <div className="grid grid-cols-3 gap-1.5">
               {reminderPresets.map((opt) => {
                 const isSelected =
-                  !isCustomReminder &&
+                  !isCustomReminderActive &&
                   settings.default_reminder_lead_time_minutes === opt.value;
                 return (
                   <button
@@ -353,9 +381,12 @@ export function SettingsDrawer({
 
               <button
                 type="button"
-                onClick={() => setIsCustomReminder(true)}
+                onClick={() => {
+                  setIsCustomReminder(true);
+                  setCustomReminderMins(String(settings.default_reminder_lead_time_minutes));
+                }}
                 className={`py-1.5 px-2 text-xs rounded-lg border transition ${
-                  isCustomReminder
+                  isCustomReminderActive
                     ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold border-transparent"
                     : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 }`}
@@ -364,8 +395,8 @@ export function SettingsDrawer({
               </button>
             </div>
 
-            {isCustomReminder && (
-              <div className="flex items-center gap-2 pt-1">
+            {isCustomReminderActive && (
+              <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-100">
                 <input
                   type="number"
                   min="0"
@@ -405,15 +436,15 @@ export function SettingsDrawer({
               Choose how many upcoming days appear in your Today view for a rolling radar of upcoming deadlines.
             </p>
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
               {lookaheadPresets.map((opt) => {
                 const currentVal = settings.today_view_lookahead_days ?? 3;
-                const isSelected = currentVal === opt.value;
+                const isSelected = !isCustomHorizonActive && currentVal === opt.value;
                 return (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => onUpdateSettings({ today_view_lookahead_days: opt.value })}
+                    onClick={() => handleHorizonChange(opt.value)}
                     className={`py-1.5 px-2 text-xs rounded-lg border transition ${
                       isSelected
                         ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold border-transparent"
@@ -424,7 +455,44 @@ export function SettingsDrawer({
                   </button>
                 );
               })}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCustomHorizon(true);
+                  setCustomHorizonDays(String(settings.today_view_lookahead_days ?? 3));
+                }}
+                className={`py-1.5 px-2 text-xs rounded-lg border transition ${
+                  isCustomHorizonActive
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-semibold border-transparent"
+                    : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                }`}
+              >
+                Custom...
+              </button>
             </div>
+
+            {isCustomHorizonActive && (
+              <div className="flex items-center gap-2 pt-1 animate-in fade-in duration-100">
+                <input
+                  type="number"
+                  min="0"
+                  max="365"
+                  placeholder="Number of days (e.g. 4, 10, 14)"
+                  value={customHorizonDays}
+                  onChange={(e) => setCustomHorizonDays(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleCustomHorizonSubmit}
+                  className="px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium rounded-lg"
+                >
+                  Set
+                </button>
+              </div>
+            )}
           </div>
 
           <hr className="border-zinc-200/80 dark:border-zinc-800/80" />

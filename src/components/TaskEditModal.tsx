@@ -44,7 +44,12 @@ export function TaskEditModal({
   const [priority, setPriority] = useState<Priority>("P2");
   const [dueDateStr, setDueDateStr] = useState("");
   const [reminderMinutes, setReminderMinutes] = useState(15);
+  const [isCustomReminder, setIsCustomReminder] = useState(false);
+  const [customReminderInput, setCustomReminderInput] = useState("");
+
   const [estimatedDuration, setEstimatedDuration] = useState<number | null>(null);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [customDurationInput, setCustomDurationInput] = useState("");
   const [courseName, setCourseName] = useState("");
   const [externalUrl, setExternalUrl] = useState("");
   const [showEditUrl, setShowEditUrl] = useState(false);
@@ -59,13 +64,30 @@ export function TaskEditModal({
       setPriority(task.priority || "P2");
       setCourseName(task.course_name || "");
       setExternalUrl(task.external_url || "");
-      setEstimatedDuration(task.estimated_duration_minutes ?? null);
+      const dur = task.estimated_duration_minutes ?? null;
+      setEstimatedDuration(dur);
+      if (dur !== null && !["", "15", "30", "45", "60", "90", "120", "180"].includes(String(dur))) {
+        setIsCustomDuration(true);
+        setCustomDurationInput(String(dur));
+      } else {
+        setIsCustomDuration(false);
+        setCustomDurationInput("");
+      }
+
       setRecurrence(task.recurrence || null);
-      setReminderMinutes(
+
+      const rem =
         typeof task.reminder_lead_time_minutes === "number"
           ? task.reminder_lead_time_minutes
-          : settings.default_reminder_lead_time_minutes
-      );
+          : settings.default_reminder_lead_time_minutes;
+      setReminderMinutes(rem);
+      if (![0, 15, 60, 180, 1440].includes(rem)) {
+        setIsCustomReminder(true);
+        setCustomReminderInput(String(rem));
+      } else {
+        setIsCustomReminder(false);
+        setCustomReminderInput("");
+      }
 
       if (task.due_date) {
         try {
@@ -292,15 +314,28 @@ export function TaskEditModal({
           {/* Duration & Reminder Grid - 2 clean dropdowns that fit side-by-side */}
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
-                <Hourglass className="w-3.5 h-3.5 text-amber-500" />
-                <span>Est. Duration</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Hourglass className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Est. Duration</span>
+                </label>
+                {isCustomDuration && estimatedDuration !== null && (
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    {estimatedDuration}m
+                  </span>
+                )}
+              </div>
               <select
-                value={estimatedDuration ?? ""}
-                onChange={(e) =>
-                  setEstimatedDuration(e.target.value ? parseInt(e.target.value, 10) : null)
-                }
+                value={isCustomDuration ? "custom" : (estimatedDuration ?? "")}
+                onChange={(e) => {
+                  if (e.target.value === "custom") {
+                    setIsCustomDuration(true);
+                    setCustomDurationInput(estimatedDuration ? String(estimatedDuration) : "");
+                  } else {
+                    setIsCustomDuration(false);
+                    setEstimatedDuration(e.target.value ? parseInt(e.target.value, 10) : null);
+                  }
+                }}
                 className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
               >
                 {durationOptions.map((opt) => (
@@ -308,17 +343,53 @@ export function TaskEditModal({
                     {opt.label}
                   </option>
                 ))}
+                <option value="custom">Custom...</option>
               </select>
+
+              {isCustomDuration && (
+                <div className="flex items-center gap-1.5 mt-1.5 animate-in fade-in duration-100">
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    placeholder="Minutes"
+                    value={customDurationInput}
+                    onChange={(e) => {
+                      setCustomDurationInput(e.target.value);
+                      const val = parseInt(e.target.value, 10);
+                      setEstimatedDuration(!isNaN(val) && val > 0 ? val : null);
+                    }}
+                    autoFocus
+                    className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/40 placeholder:text-zinc-400"
+                  />
+                  <span className="text-[10px] text-zinc-400 shrink-0">min</span>
+                </div>
+              )}
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-blue-500" />
-                <span>Reminder</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Reminder</span>
+                </label>
+                {isCustomReminder && (
+                  <span className="text-[10px] font-mono text-zinc-400">
+                    {reminderMinutes}m
+                  </span>
+                )}
+              </div>
               <select
-                value={reminderMinutes}
-                onChange={(e) => setReminderMinutes(parseInt(e.target.value, 10))}
+                value={isCustomReminder ? "custom" : reminderMinutes}
+                onChange={(e) => {
+                  if (e.target.value === "custom") {
+                    setIsCustomReminder(true);
+                    setCustomReminderInput(String(reminderMinutes));
+                  } else {
+                    setIsCustomReminder(false);
+                    setReminderMinutes(parseInt(e.target.value, 10));
+                  }
+                }}
                 className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 cursor-pointer"
               >
                 {reminderOptions.map((opt) => (
@@ -326,7 +397,30 @@ export function TaskEditModal({
                     {opt.label}
                   </option>
                 ))}
+                <option value="custom">Custom...</option>
               </select>
+
+              {isCustomReminder && (
+                <div className="flex items-center gap-1.5 mt-1.5 animate-in fade-in duration-100">
+                  <input
+                    type="number"
+                    min="0"
+                    max="10080"
+                    placeholder="Minutes"
+                    value={customReminderInput}
+                    onChange={(e) => {
+                      setCustomReminderInput(e.target.value);
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 0) {
+                        setReminderMinutes(val);
+                      }
+                    }}
+                    autoFocus
+                    className="w-full px-3 py-1.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500/40 placeholder:text-zinc-400"
+                  />
+                  <span className="text-[10px] text-zinc-400 shrink-0">min</span>
+                </div>
+              )}
             </div>
           </div>
 

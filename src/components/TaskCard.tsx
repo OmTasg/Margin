@@ -96,9 +96,13 @@ export function TaskCard({
       ? task.reminder_lead_time_minutes === 0
         ? "At due"
         : task.reminder_lead_time_minutes >= 1440
-        ? `${Math.round(task.reminder_lead_time_minutes / 1440)}d before`
+        ? task.reminder_lead_time_minutes % 1440 === 0
+          ? `${task.reminder_lead_time_minutes / 1440}d before`
+          : `${(task.reminder_lead_time_minutes / 1440).toFixed(1)}d before`
         : task.reminder_lead_time_minutes >= 60
-        ? `${Math.round(task.reminder_lead_time_minutes / 60)}h before`
+        ? task.reminder_lead_time_minutes % 60 === 0
+          ? `${task.reminder_lead_time_minutes / 60}h before`
+          : `${Math.floor(task.reminder_lead_time_minutes / 60)}h ${task.reminder_lead_time_minutes % 60}m before`
         : `${task.reminder_lead_time_minutes}m before`
       : null;
 

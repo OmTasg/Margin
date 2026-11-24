@@ -36,12 +36,26 @@ export function QuickAddBar({ settings, onAddTask, inputRef: externalRef }: Prop
   const [reminderMinutes, setReminderMinutes] = useState(
     settings.default_reminder_lead_time_minutes
   );
+  const [isCustomReminder, setIsCustomReminder] = useState(
+    ![0, 15, 60, 180, 1440].includes(settings.default_reminder_lead_time_minutes)
+  );
+  const [customReminderInput, setCustomReminderInput] = useState(
+    ![0, 15, 60, 180, 1440].includes(settings.default_reminder_lead_time_minutes)
+      ? String(settings.default_reminder_lead_time_minutes)
+      : ""
+  );
+
   const [estimatedDuration, setEstimatedDuration] = useState<number | null>(null);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
+  const [customDurationInput, setCustomDurationInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync default reminder lead time from settings
   useEffect(() => {
     setReminderMinutes(settings.default_reminder_lead_time_minutes);
+    const isCust = ![0, 15, 60, 180, 1440].includes(settings.default_reminder_lead_time_minutes);
+    setIsCustomReminder(isCust);
+    setCustomReminderInput(isCust ? String(settings.default_reminder_lead_time_minutes) : "");
   }, [settings.default_reminder_lead_time_minutes]);
 
   // Click outside to collapse if empty
@@ -108,6 +122,12 @@ export function QuickAddBar({ settings, onAddTask, inputRef: externalRef }: Prop
       setCourse("");
       setShowCourseInput(false);
       setEstimatedDuration(null);
+      setIsCustomDuration(false);
+      setCustomDurationInput("");
+      const defaultIsCustom = ![0, 15, 60, 180, 1440].includes(settings.default_reminder_lead_time_minutes);
+      setIsCustomReminder(defaultIsCustom);
+      setCustomReminderInput(defaultIsCustom ? String(settings.default_reminder_lead_time_minutes) : "");
+      setReminderMinutes(settings.default_reminder_lead_time_minutes);
       setIsExpanded(false);
     } finally {
       setIsSubmitting(false);
@@ -291,10 +311,16 @@ export function QuickAddBar({ settings, onAddTask, inputRef: externalRef }: Prop
             <div className="relative inline-flex items-center shrink-0">
               <Hourglass className="w-3 h-3 text-zinc-400 absolute left-2 pointer-events-none" />
               <select
-                value={estimatedDuration ?? ""}
-                onChange={(e) =>
-                  setEstimatedDuration(e.target.value ? parseInt(e.target.value, 10) : null)
-                }
+                value={isCustomDuration ? "custom" : (estimatedDuration ?? "")}
+                onChange={(e) => {
+                  if (e.target.value === "custom") {
+                    setIsCustomDuration(true);
+                    setCustomDurationInput(estimatedDuration ? String(estimatedDuration) : "");
+                  } else {
+                    setIsCustomDuration(false);
+                    setEstimatedDuration(e.target.value ? parseInt(e.target.value, 10) : null);
+                  }
+                }}
                 className="pl-6 pr-2 py-1 text-xs bg-transparent border border-zinc-200/80 dark:border-zinc-800 rounded-md text-zinc-700 dark:text-zinc-300 font-medium focus:outline-none cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition"
               >
                 <option value="">⏱ Estimate</option>
@@ -303,7 +329,27 @@ export function QuickAddBar({ settings, onAddTask, inputRef: externalRef }: Prop
                     {opt.label}
                   </option>
                 ))}
+                <option value="custom">⏱ Custom...</option>
               </select>
+              {isCustomDuration && (
+                <div className="inline-flex items-center ml-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="1440"
+                    placeholder="min"
+                    value={customDurationInput}
+                    onChange={(e) => {
+                      setCustomDurationInput(e.target.value);
+                      const val = parseInt(e.target.value, 10);
+                      setEstimatedDuration(!isNaN(val) && val > 0 ? val : null);
+                    }}
+                    autoFocus
+                    className="w-14 px-1.5 py-0.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-md text-zinc-900 dark:text-zinc-100"
+                  />
+                  <span className="text-[10px] text-zinc-400 ml-0.5">m</span>
+                </div>
+              )}
             </div>
 
             <span className="text-zinc-300 dark:text-zinc-700">|</span>
@@ -312,8 +358,16 @@ export function QuickAddBar({ settings, onAddTask, inputRef: externalRef }: Prop
             <div className="relative inline-flex items-center shrink-0">
               <Clock className="w-3 h-3 text-zinc-400 absolute left-2 pointer-events-none" />
               <select
-                value={reminderMinutes}
-                onChange={(e) => setReminderMinutes(parseInt(e.target.value, 10))}
+                value={isCustomReminder ? "custom" : reminderMinutes}
+                onChange={(e) => {
+                  if (e.target.value === "custom") {
+                    setIsCustomReminder(true);
+                    setCustomReminderInput(String(reminderMinutes));
+                  } else {
+                    setIsCustomReminder(false);
+                    setReminderMinutes(parseInt(e.target.value, 10));
+                  }
+                }}
                 className="pl-6 pr-2 py-1 text-xs bg-transparent border border-zinc-200/80 dark:border-zinc-800 rounded-md text-zinc-700 dark:text-zinc-300 font-medium focus:outline-none cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition"
               >
                 {reminderOptions.map((opt) => (
@@ -321,7 +375,29 @@ export function QuickAddBar({ settings, onAddTask, inputRef: externalRef }: Prop
                     ⏰ {opt.label}
                   </option>
                 ))}
+                <option value="custom">⏰ Custom...</option>
               </select>
+              {isCustomReminder && (
+                <div className="inline-flex items-center ml-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="10080"
+                    placeholder="min"
+                    value={customReminderInput}
+                    onChange={(e) => {
+                      setCustomReminderInput(e.target.value);
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 0) {
+                        setReminderMinutes(val);
+                      }
+                    }}
+                    autoFocus
+                    className="w-14 px-1.5 py-0.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-md text-zinc-900 dark:text-zinc-100"
+                  />
+                  <span className="text-[10px] text-zinc-400 ml-0.5">m</span>
+                </div>
+              )}
             </div>
 
             {/* Course Tag */}
